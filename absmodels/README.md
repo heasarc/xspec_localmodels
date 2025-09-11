@@ -7,6 +7,6 @@ These local models are analogs of the gaussian absorption multiplicative model (
 
 ## Installing the models
 
-These local models can be installed in according to the <a href="https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/manual/XSappendixLocal.html">"Adding Models to XSPEC" Appendix</a> in the manual.
+These local models can be installed in according to the <a href="https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSappendixLocal.html">"Adding Models to XSPEC" Appendix</a> in the manual.
 
 These models are expected to be in the standard Xspec release starting with version 12.14.2.

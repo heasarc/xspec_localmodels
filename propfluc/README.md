@@ -58,9 +58,9 @@ As this is a model for the power spectrum (or lag spectrum if mode=3)
 rather than the spectral energy distribution, the process for loading
 the data into XSPEC is slightly different. First of all, a power
 spectrum can easily be created from a light curve using <a
-href="http://heasarc.nasa.gov/xanadu/xronos/examples/powspec.html">powspec</a>
+href="https://heasarc.gsfc.nasa.gov/docs/software/xronos/examples/powspec.html">powspec</a>
 from the <a
-href="http://heasarc.nasa.gov/docs/xanadu/xronos/xronos.html">XRONOS</a>
+href="https://heasarc.gsfc.nasa.gov/docs/software/xronos/xronos.html">XRONOS</a>
 package (for example). The power spectrum will then typically be
 written in the form<br>
 f, df, P, dP<br>
@@ -70,7 +70,7 @@ Emin, Emax, F(Emax-Emin), dF(Emax-Emin)<br>
 where Emin and Emax are the lower and upper bands of each energy bin and F
 is the flux. It is therefore necessary to create a data file with the inputs<br>
 f-df, f+df, 2Pdf, 2dPdf.<br>
-This data file can then be converted into a .pha file using <a href="http://heasarc.nasa.gov/lheasoft/ftools/fhelp/flx2xsp.txt">flx2xsp</a> which
+This data file can then be converted into a .pha file using <a href="https://heasarc.gsfc.nasa.gov/docs/software/lheasoft/help/ftflx2xsp.html">ftflx2xsp</a> which
 will also generate a diagonal response (.rsp) file. The data can then be
 read into XSPEC in the usual way, using the command data 1:1 'filename'.pha.
 The command ip euf will then present the data and model in terms of

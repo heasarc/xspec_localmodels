@@ -36,14 +36,14 @@ We provide 8 different reXcor grids that were computed for different values of t
 
 | Table file name | lambda |  a  | h (rg) |
 | --------------- | ------ | --- | ------ |
-| [reXcor_l001_a090_h5.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l001_a090_h5.fits) | 0.01 | 0.9 | 5 |
-| [reXcor_l001_a090_h20.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l001_a090_h20.fits) | 0.01 | 0.9 | 20 |
-| [reXcor_l001_a099_h5.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l001_a099_h5.fits) | 0.01 | 0.99 | 5 |
-| [reXcor_l001_a099_h20.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l001_a099_h20.fits) | 0.01 | 0.99 | 20 |
-| [reXcor_l01_a090_h5.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l01_a090_h5.fits) | 0.1 | 0.9 | 5 |
-| [reXcor_l01_a090_h20.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l01_a090_h20.fits) | 0.1 | 0.9 | 20 | 
-| [reXcor_l01_a099_h5.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l01_a099_h5.fits) | 0.1 | 0.99 | 5 |
-| [reXcor_l01_a099_h20.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/reXcor/reXcor_l01_a099_h20.fits) | 0.1 | 0.99 | 20 | 
+| [reXcor_l001_a090_h5.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l001_a090_h5.fits) | 0.01 | 0.9 | 5 |
+| [reXcor_l001_a090_h20.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l001_a090_h20.fits) | 0.01 | 0.9 | 20 |
+| [reXcor_l001_a099_h5.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l001_a099_h5.fits) | 0.01 | 0.99 | 5 |
+| [reXcor_l001_a099_h20.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l001_a099_h20.fits) | 0.01 | 0.99 | 20 |
+| [reXcor_l01_a090_h5.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l01_a090_h5.fits) | 0.1 | 0.9 | 5 |
+| [reXcor_l01_a090_h20.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l01_a090_h20.fits) | 0.1 | 0.9 | 20 | 
+| [reXcor_l01_a099_h5.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l01_a099_h5.fits) | 0.1 | 0.99 | 5 |
+| [reXcor_l01_a099_h20.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/reXcor/reXcor_l01_a099_h20.fits) | 0.1 | 0.99 | 20 | 
   
 ## Contact
 

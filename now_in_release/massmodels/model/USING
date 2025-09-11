@@ -17,7 +17,7 @@ Building the local models is slightly more complicated than usual because
 of the need to link to GSL. The procedure is also different depending on
 whether the operating system is Linux of Mac OS. These issues are explained
 in the xspec FAQ
-      http://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/faq.html#Q10
+      https://heasarc.gsfc.nasa.gov/docs/software/xspec/faq.html#include-third-party-lib
 
 The addition to HD_CXXFLAGS will be -I/path/to/gsl/include and that to the link
 line will be -L/path/to/gslib -lgsl -lgslcblas. After following the instructions

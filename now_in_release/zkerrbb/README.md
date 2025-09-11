@@ -2,7 +2,7 @@
 
 ## Description
 
-This is a version of the standard [kerrbb](https://heasarc.nasa.gov/xanadu/xspec/manual/XSmodelKerrbb.html) model for use with AGN
+This is a version of the standard [kerrbb](https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSmodelKerrbb.html) model for use with AGN
 spectra. The `Mdd` parameter (number five) is now in units of solar 
 masses per year and the `Dbh` parameter (number six) has been replaced
 by a redshift parameter.

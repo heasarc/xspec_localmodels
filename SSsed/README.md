@@ -55,7 +55,7 @@ Spectral parameters of the SSsed model are summarised in Table 1. The model has 
 
 ## Installing the model
 
-Follow the guidance in <a href="https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/manual/XSappendixLocal.html">Appendix C in the Xspec manual</a> for installing local models.
+Follow the guidance in <a href="https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSappendixLocal.html">Appendix C in the Xspec manual</a> for installing local models.
 
 For example: 
 

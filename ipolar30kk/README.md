@@ -25,7 +25,7 @@ The model grid is computed for 56 white dwarf masses from 0.3 to 1.4 solar masse
 
 ## Table Model File
 
-The table model file can be downloaded as [ipolar30kk.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/ipolar30kk.fits)
+The table model file can be downloaded as [ipolar30kk.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/ipolar30kk/ipolar30kk.fits)
 
 ## Using the model
 
