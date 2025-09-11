@@ -35,9 +35,9 @@ The table model is available as an additive tabular model and stored in three fi
 
 | Table file name  | heavy element abundances  |
 | ---------------  | ------------------------  |
-| [sss_atm_sol.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/sss_atm/sss_atm_sol.fits) | for solar one (A=1)       |
-| [sss_atm_LMC.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/sss_atm/sss_atm_LMC.fits) | for LMC abundance (A=0.5) |
-| [sss_atm_SMC.fits](https://heasarc.gsfc.nasa.gov/docs/xanadu/xspec/models/sss_atm/sss_atm_SMC.fits) | for SMC abundance (A=0.1) |
+| [sss_atm_sol.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/sss_atm/sss_atm_sol.fits) | for solar one (A=1)       |
+| [sss_atm_LMC.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/sss_atm/sss_atm_LMC.fits) | for LMC abundance (A=0.5) |
+| [sss_atm_SMC.fits](https://heasarc.gsfc.nasa.gov/FTP/software/xspec/localmodels/sss_atm/sss_atm_SMC.fits) | for SMC abundance (A=0.1) |
 
 
 ## Using the model
