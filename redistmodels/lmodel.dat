@@ -1,0 +1,9 @@
+emcomp       5  0.         1.e20           C_emcomp    con  0
+CompFluxR    ""   0.25   0.0   0.0   1.0   1.0   0.05
+SmScatCut    ""    0.0   0.0   0.0   0.9   1.0   0.05
+SmScatFrac   ""    1.0   0.0   0.0  10.0  10.0   0.05
+LgScatCut    ""    1.0   0.9   0.0   1.0   1.0  -0.05
+LgScatFrac   ""    1.0   0.0   0.0  10.0  10.0  -0.05
+
+htsmooth       1  0.         1.e20           C_htsmooth    con  0
+MaxVel  "km/s" -50.0  -10000.0  -10000.0 10000.0 10000.0        10.0
