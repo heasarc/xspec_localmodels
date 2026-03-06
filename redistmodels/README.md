@@ -62,6 +62,10 @@ XSPEC12>lmod models /path/to/xspec_localmodels/redistmodels/
 
 These models are developed for reproducing XRISM _Resolve_ micro-calorimeter X-ray spectra of the supermassive binary system, eta Carinae (XRISM-collaboration et al. 2026, accepted for publication in Astrophysical Journal).
 
+https://arxiv.org/abs/2602.22476
+
+[DOI 10.5281/zenodo.18850950](https://zenodo.org/records/18850951)
+
 
 ## Contact
 
