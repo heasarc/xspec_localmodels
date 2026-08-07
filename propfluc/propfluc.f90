@@ -540,8 +540,8 @@
           bdata(i+1) = bdata(k+1)
       end do
       !Now do the inverse FFT
-      call fftw_wrap_four1(adata,n,-1)
-      call fftw_wrap_four1(bdata,n,-1)
+      call fftw_wrap_four1_sng(adata,n,-1)
+      call fftw_wrap_four1_sng(bdata,n,-1)
       !Now multiply together
       do j=1,n
           k = 2*j
@@ -549,7 +549,7 @@
           cdata(k-1) = adata(k-1)*bdata(k-1)
       end do
       !Then transform back
-      call fftw_wrap_four1(cdata,n,1)
+      call fftw_wrap_four1_sng(cdata,n,1)
       !Finally put the +ve real frequencies into cp(n/2)
       do j = 0,n/2
           k = 2*j + 1
