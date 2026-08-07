@@ -1,5 +1,7 @@
       Subroutine sssed(ear,ne,param,ifl,photar,photer)
-
+      
+      use xsfortran
+      
       implicit none
 
       integer NPAR
@@ -117,6 +119,7 @@ c     param(14) colour correction on/off 0=iff 1=on
 
       subroutine ssdiskf(ear,ne,param,ifl,photar)
 
+      use xsfortran
 
 c     program to integrate the disk equations from shakura-sunyaev disk
 c     as given by Novikov and Thorne

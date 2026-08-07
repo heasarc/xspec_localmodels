@@ -1,7 +1,9 @@
 
       SUBROUTINE ainibin(nin, ein, nout, eout, start, end, fstart, fend,
      &                  z)
-
+      
+      use xsfortran
+      
       INTEGER nin, nout
       INTEGER start(nout), end(nout)
       REAL    ein(0:nin), eout(0:nout), fstart(nout), fend(nout), z
