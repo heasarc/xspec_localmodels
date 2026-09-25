@@ -50,7 +50,7 @@ int nl,nh;
    double *v;
 
    v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_ex("allocation failure in dvector()");
+   if (!v) nrerror_te("allocation failure in dvector()");
    return v-nl;
 }
 
