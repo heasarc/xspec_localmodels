@@ -602,7 +602,7 @@ int vneutral
   highnfile_name=malloc(200);
 
   root=malloc(200);
-  element_name=malloc(2);
+  element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   ext=malloc(30);
   temp=malloc(130);
   sjunk=malloc(50);

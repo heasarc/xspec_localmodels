@@ -701,7 +701,7 @@ int phsi
 
   IONSTR=malloc(30);
   ext=malloc(30);
-  element_name=malloc(2);
+  element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   temp=malloc(130);
   sjunk=malloc(50);
   sjunk1=malloc(50);
