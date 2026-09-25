@@ -46,10 +46,33 @@ FCALLSCSUB6(miabs,MIABS,miabs,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 /* START */
 
-void nrerror_mi(error_text)
-char error_text[];
+/* Forward declarations (converted from K&R style). */
+void nrerror_mi(char error_text[]);
+double *vector_mi(int nl, int nh);
+int *ivector_mi(int nl, int nh);
+double *dvector_mi(int nl, int nh);
+double **matrix_mi(int nrl, int nrh, int ncl, int nch);
+double **dmatrix_mi(int nrl, int nrh, int ncl, int nch);
+int **imatrix_mi(int nrl, int nrh, int ncl, int nch);
+double **submatrix_mi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
+void free_vector_mi(double *v, int nl, int nh);
+void free_ivector_mi(int *v, int nl, int nh);
+void free_dvector_mi(double *v, int nl, int nh);
+void free_matrix_mi(double **m, int nrl, int nrh, int ncl, int nch);
+void free_dmatrix_mi(double **m, int nrl, int nrh, int ncl, int nch);
+void free_imatrix_mi(int **m, int nrl, int nrh, int ncl, int nch);
+void free_submatrix_mi(double **b, int nrl, int nrh, int ncl, int nch);
+double **convert_matrix_mi(double *a, int nrl, int nrh, int ncl, int nch);
+void free_convert_matrix_mi(double **b, int nrl, int nrh, int ncl, int nch);
+double qromb_mi(double (*func)(double), double a, double b);
+double trapzd_mi(double (*func)(double), double a, double b, int n);
+void polint_mi(double xa[], double ya[], int n, double x, double *y, double *dy);
+void spline_mi(double x[], double y[], int n, double yp1, double ypn, double y2[]);
+void splint_mi(double xa[], double ya[], double y2a[], int n, double x, double *y);
+void gaussj_mi(double **a, int n, double **b, int m);
+
+void nrerror_mi(char error_text[])
 {
-   void exit();
 
    /*fprintf(stderr,"Numerical Recipes run-time error...\n");
    fprintf(stderr,"%s\n",error_text);
@@ -57,8 +80,7 @@ char error_text[];
    exit(1);*/
 }
 
-double *vector_mi(nl,nh)
-int nl,nh;
+double *vector_mi(int nl, int nh)
 {
    double *v;
 
@@ -67,8 +89,7 @@ int nl,nh;
    return v-nl;
 }
 
-int *ivector_mi(nl,nh)
-int nl,nh;
+int *ivector_mi(int nl, int nh)
 {
    int *v;
 
@@ -77,8 +98,7 @@ int nl,nh;
    return v-nl;
 }
 
-double *dvector_mi(nl,nh)
-int nl,nh;
+double *dvector_mi(int nl, int nh)
 {
    double *v;
 
@@ -87,8 +107,7 @@ int nl,nh;
    return v-nl;
 }
 
-double **matrix_mi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **matrix_mi(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -105,8 +124,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **dmatrix_mi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **dmatrix_mi(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -123,8 +141,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-int **imatrix_mi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+int **imatrix_mi(int nrl, int nrh, int ncl, int nch)
 {
    int i,**m;
 
@@ -140,9 +157,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **submatrix_mi(a,oldrl,oldrh,oldcl,oldch,newrl,newcl)
-double **a;
-int oldrl,oldrh,oldcl,oldch,newrl,newcl;
+double **submatrix_mi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
 {
    int i,j;
    double **m;
@@ -156,29 +171,22 @@ int oldrl,oldrh,oldcl,oldch,newrl,newcl;
    return m;
 }
 
-void free_vector_mi(v,nl,nh)
-double *v;
-int nl,nh;
+void free_vector_mi(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_ivector_mi(v,nl,nh)
-int *v,nl,nh;
+void free_ivector_mi(int *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_dvector_mi(v,nl,nh)
-double *v;
-int nl,nh;
+void free_dvector_mi(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_matrix_mi(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_matrix_mi(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -186,9 +194,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_dmatrix_mi(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_dmatrix_mi(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -196,9 +202,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_imatrix_mi(m,nrl,nrh,ncl,nch)
-int **m;
-int nrl,nrh,ncl,nch;
+void free_imatrix_mi(int **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -206,16 +210,12 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_submatrix_mi(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_submatrix_mi(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double **convert_matrix_mi(a,nrl,nrh,ncl,nch)
-double *a;
-int nrl,nrh,ncl,nch;
+double **convert_matrix_mi(double *a, int nrl, int nrh, int ncl, int nch)
 {
    int i,j,nrow,ncol;
    double **m;
@@ -229,21 +229,16 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-void free_convert_matrix_mi(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_convert_matrix_mi(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double qromb_mi(func,a,b)
-double a,b;
-double (*func)();
+double qromb_mi(double (*func)(double), double a, double b)
 {
-   double ss,dss,trapzd_mi();
+   double ss, dss;
    double s[JMAXP+1],h[JMAXP+1];
    int j;
-   void polint_mi(),nrerror_mi();
 
    h[1]=1.0;
    for (j=1;j<=JMAX;j++) {
@@ -261,10 +256,7 @@ double (*func)();
    return ss;
 }
 
-double trapzd_mi(func,a,b,n)
-double a,b;
-double (*func)();                           /* ANSI: double (*func)(double); */
-int n;
+double trapzd_mi(double (*func)(double), double a, double b, int n)
 {
    double x,tnm,sum,del;
    static double s;
@@ -285,14 +277,11 @@ int n;
    }
 }
 
-void polint_mi(xa,ya,n,x,y,dy)
-double xa[],ya[],x,*y,*dy;
-int n;
+void polint_mi(double xa[], double ya[], int n, double x, double *y, double *dy)
 {
    int i,m,ns=1;
    double den,dif,dift,ho,hp,w;
-   double *c,*d,*vector_mi();
-   void nrerror_mi(),free_vector_mi();
+   double *c, *d;
 
    dif=fabs(x-xa[1]);
    c=vector_mi(1,n);
@@ -322,13 +311,10 @@ int n;
    free_vector_mi(c,1,n);
 }
 
-void spline_mi(x,y,n,yp1,ypn,y2)
-double x[],y[],yp1,ypn,y2[];
-int n;
+void spline_mi(double x[], double y[], int n, double yp1, double ypn, double y2[])
 {
    int i,k;
-   double p,qn,sig,un,*u,*vector_mi();
-   void free_vector_mi();
+   double p, qn, sig, un, *u;
 
    u=vector_mi(1,n-1);
    if (yp1 > 0.99e30)
@@ -356,13 +342,10 @@ int n;
    free_vector_mi(u,1,n-1);
 }
 
-void splint_mi(xa,ya,y2a,n,x,y)
-double xa[],ya[],y2a[],x,*y;
-int n;
+void splint_mi(double xa[], double ya[], double y2a[], int n, double x, double *y)
 {
    int klo,khi,k;
    double h,b,a;
-   void nrerror_mi();
 
    klo=1;
    khi=n;
@@ -378,14 +361,11 @@ int n;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
 }
 
-void gaussj_mi(a,n,b,m)
-double **a,**b;
-int n,m;
+void gaussj_mi(double **a, int n, double **b, int m)
 {
    int *indxc,*indxr,*ipiv;
-   int i,icol=1,irow=1,j,k,l,ll,*ivector_mi();
+   int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
-   void nrerror_mi(),free_ivector_mi();
 
    indxc=ivector_mi(1,n);
    indxr=ivector_mi(1,n);
@@ -1148,8 +1128,8 @@ int miabs
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
@@ -1181,8 +1161,8 @@ int miabs
 	if (lines) {
 	  if (electron>=3) {
 	    ext="tr_short"; 
-	    if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	    else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	    if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	    else sprintf(temp,"%s%da.%s",root,electron,ext);
 	    input=fopen(temp,"r");
 	    while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	      j=j+1;
@@ -1220,8 +1200,8 @@ int miabs
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
@@ -1252,8 +1232,8 @@ int miabs
 	
 	if (lines) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -1297,7 +1277,7 @@ int miabs
 	if (lines) {
 	  /* Transitions */
 	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	  sprintf(temp,"%s%2da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    g_j=g_j+1.;
@@ -1318,7 +1298,7 @@ int miabs
 
 	/* Edges */
 	ext="pi_short"; 
-	sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	sprintf(temp,"%s%2da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */

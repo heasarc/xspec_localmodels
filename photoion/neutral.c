@@ -43,10 +43,33 @@ FCALLSCSUB6(neutral,NEUTRAL,neutral,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 /* START */
 
-void nrerror_ne(error_text)
-char error_text[];
+/* Forward declarations (converted from K&R style). */
+void nrerror_ne(char error_text[]);
+double *vector_ne(int nl, int nh);
+int *ivector_ne(int nl, int nh);
+double *dvector_ne(int nl, int nh);
+double **matrix_ne(int nrl, int nrh, int ncl, int nch);
+double **dmatrix_ne(int nrl, int nrh, int ncl, int nch);
+int **imatrix_ne(int nrl, int nrh, int ncl, int nch);
+double **submatrix_ne(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
+void free_vector_ne(double *v, int nl, int nh);
+void free_ivector_ne(int *v, int nl, int nh);
+void free_dvector_ne(double *v, int nl, int nh);
+void free_matrix_ne(double **m, int nrl, int nrh, int ncl, int nch);
+void free_dmatrix_ne(double **m, int nrl, int nrh, int ncl, int nch);
+void free_imatrix_ne(int **m, int nrl, int nrh, int ncl, int nch);
+void free_submatrix_ne(double **b, int nrl, int nrh, int ncl, int nch);
+double **convert_matrix_ne(double *a, int nrl, int nrh, int ncl, int nch);
+void free_convert_matrix_ne(double **b, int nrl, int nrh, int ncl, int nch);
+double qromb_ne(double (*func)(double), double a, double b);
+double trapzd_ne(double (*func)(double), double a, double b, int n);
+void polint_ne(double xa[], double ya[], int n, double x, double *y, double *dy);
+void spline_ne(double x[], double y[], int n, double yp1, double ypn, double y2[]);
+void splint_ne(double xa[], double ya[], double y2a[], int n, double x, double *y);
+void gaussj_ne(double **a, int n, double **b, int m);
+
+void nrerror_ne(char error_text[])
 {
-   void exit();
 
    /*fprintf(stderr,"Numerical Recipes run-time error...\n");
    fprintf(stderr,"%s\n",error_text);
@@ -54,8 +77,7 @@ char error_text[];
    exit(1);*/
 }
 
-double *vector_ne(nl,nh)
-int nl,nh;
+double *vector_ne(int nl, int nh)
 {
    double *v;
 
@@ -64,8 +86,7 @@ int nl,nh;
    return v-nl;
 }
 
-int *ivector_ne(nl,nh)
-int nl,nh;
+int *ivector_ne(int nl, int nh)
 {
    int *v;
 
@@ -74,8 +95,7 @@ int nl,nh;
    return v-nl;
 }
 
-double *dvector_ne(nl,nh)
-int nl,nh;
+double *dvector_ne(int nl, int nh)
 {
    double *v;
 
@@ -84,8 +104,7 @@ int nl,nh;
    return v-nl;
 }
 
-double **matrix_ne(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **matrix_ne(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -102,8 +121,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **dmatrix_ne(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **dmatrix_ne(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -120,8 +138,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-int **imatrix_ne(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+int **imatrix_ne(int nrl, int nrh, int ncl, int nch)
 {
    int i,**m;
 
@@ -137,9 +154,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **submatrix_ne(a,oldrl,oldrh,oldcl,oldch,newrl,newcl)
-double **a;
-int oldrl,oldrh,oldcl,oldch,newrl,newcl;
+double **submatrix_ne(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
 {
    int i,j;
    double **m;
@@ -153,29 +168,22 @@ int oldrl,oldrh,oldcl,oldch,newrl,newcl;
    return m;
 }
 
-void free_vector_ne(v,nl,nh)
-double *v;
-int nl,nh;
+void free_vector_ne(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_ivector_ne(v,nl,nh)
-int *v,nl,nh;
+void free_ivector_ne(int *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_dvector_ne(v,nl,nh)
-double *v;
-int nl,nh;
+void free_dvector_ne(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_matrix_ne(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_matrix_ne(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -183,9 +191,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_dmatrix_ne(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_dmatrix_ne(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -193,9 +199,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_imatrix_ne(m,nrl,nrh,ncl,nch)
-int **m;
-int nrl,nrh,ncl,nch;
+void free_imatrix_ne(int **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -203,16 +207,12 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_submatrix_ne(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_submatrix_ne(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double **convert_matrix_ne(a,nrl,nrh,ncl,nch)
-double *a;
-int nrl,nrh,ncl,nch;
+double **convert_matrix_ne(double *a, int nrl, int nrh, int ncl, int nch)
 {
    int i,j,nrow,ncol;
    double **m;
@@ -226,21 +226,16 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-void free_convert_matrix_ne(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_convert_matrix_ne(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double qromb_ne(func,a,b)
-double a,b;
-double (*func)();
+double qromb_ne(double (*func)(double), double a, double b)
 {
-   double ss,dss,trapzd_ne();
+   double ss, dss;
    double s[JMAXP+1],h[JMAXP+1];
    int j;
-   void polint_ne(),nrerror_ne();
 
    h[1]=1.0;
    for (j=1;j<=JMAX;j++) {
@@ -258,10 +253,7 @@ double (*func)();
    return ss;
 }
 
-double trapzd_ne(func,a,b,n)
-double a,b;
-double (*func)();                           /* ANSI: double (*func)(double); */
-int n;
+double trapzd_ne(double (*func)(double), double a, double b, int n)
 {
    double x,tnm,sum,del;
    static double s;
@@ -282,14 +274,11 @@ int n;
    }
 }
 
-void polint_ne(xa,ya,n,x,y,dy)
-double xa[],ya[],x,*y,*dy;
-int n;
+void polint_ne(double xa[], double ya[], int n, double x, double *y, double *dy)
 {
    int i,m,ns=1;
    double den,dif,dift,ho,hp,w;
-   double *c,*d,*vector_ne();
-   void nrerror_ne(),free_vector_ne();
+   double *c, *d;
 
    dif=fabs(x-xa[1]);
    c=vector_ne(1,n);
@@ -319,13 +308,10 @@ int n;
    free_vector_ne(c,1,n);
 }
 
-void spline_ne(x,y,n,yp1,ypn,y2)
-double x[],y[],yp1,ypn,y2[];
-int n;
+void spline_ne(double x[], double y[], int n, double yp1, double ypn, double y2[])
 {
    int i,k;
-   double p,qn,sig,un,*u,*vector_ne();
-   void free_vector_ne();
+   double p, qn, sig, un, *u;
 
    u=vector_ne(1,n-1);
    if (yp1 > 0.99e30)
@@ -353,13 +339,10 @@ int n;
    free_vector_ne(u,1,n-1);
 }
 
-void splint_ne(xa,ya,y2a,n,x,y)
-double xa[],ya[],y2a[],x,*y;
-int n;
+void splint_ne(double xa[], double ya[], double y2a[], int n, double x, double *y)
 {
    int klo,khi,k;
    double h,b,a;
-   void nrerror_ne();
 
    klo=1;
    khi=n;
@@ -375,14 +358,11 @@ int n;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
 }
 
-void gaussj_ne(a,n,b,m)
-double **a,**b;
-int n,m;
+void gaussj_ne(double **a, int n, double **b, int m)
 {
    int *indxc,*indxr,*ipiv;
-   int i,icol=1,irow=1,j,k,l,ll,*ivector_ne();
+   int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
-   void nrerror_ne(),free_ivector_ne();
 
    indxc=ivector_ne(1,n);
    indxr=ivector_ne(1,n);
@@ -884,8 +864,8 @@ int neutral
 	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	  if (electron>=3) {
 	    ext="tr_short"; 
-	    if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	    else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	    if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	    else sprintf(temp,"%s%da.%s",root,electron,ext);
 	    input=fopen(temp,"r");
 	    while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	      j=j+1;
@@ -920,8 +900,8 @@ int neutral
 	  sprintf(root,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
 	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -963,7 +943,7 @@ int neutral
 	  
 	  /* Transitions */
 	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	  sprintf(temp,"%s%2da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    g_j=g_j+1.;

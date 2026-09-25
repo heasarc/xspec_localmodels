@@ -42,10 +42,33 @@ FCALLSCSUB6(phxi,PHXI,phxi,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 /* START */
 
-void nrerror_px(error_text)
-char error_text[];
+/* Forward declarations (converted from K&R style). */
+void nrerror_px(char error_text[]);
+double *vector_px(int nl, int nh);
+int *ivector_px(int nl, int nh);
+double *dvector_px(int nl, int nh);
+double **matrix_px(int nrl, int nrh, int ncl, int nch);
+double **dmatrix_px(int nrl, int nrh, int ncl, int nch);
+int **imatrix_px(int nrl, int nrh, int ncl, int nch);
+double **submatrix_px(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
+void free_vector_px(double *v, int nl, int nh);
+void free_ivector_px(int *v, int nl, int nh);
+void free_dvector_px(double *v, int nl, int nh);
+void free_matrix_px(double **m, int nrl, int nrh, int ncl, int nch);
+void free_dmatrix_px(double **m, int nrl, int nrh, int ncl, int nch);
+void free_imatrix_px(int **m, int nrl, int nrh, int ncl, int nch);
+void free_submatrix_px(double **b, int nrl, int nrh, int ncl, int nch);
+double **convert_matrix_px(double *a, int nrl, int nrh, int ncl, int nch);
+void free_convert_matrix_px(double **b, int nrl, int nrh, int ncl, int nch);
+double qromb_px(double (*func)(double), double a, double b);
+double trapzd_px(double (*func)(double), double a, double b, int n);
+void polint_px(double xa[], double ya[], int n, double x, double *y, double *dy);
+void spline_px(double x[], double y[], int n, double yp1, double ypn, double y2[]);
+void splint_px(double xa[], double ya[], double y2a[], int n, double x, double *y);
+void gaussj_px(double **a, int n, double **b, int m);
+
+void nrerror_px(char error_text[])
 {
-   void exit();
 
    /*fprintf(stderr,"Numerical Recipes run-time error...\n");
    fprintf(stderr,"%s\n",error_text);
@@ -53,8 +76,7 @@ char error_text[];
    exit(1);*/
 }
 
-double *vector_px(nl,nh)
-int nl,nh;
+double *vector_px(int nl, int nh)
 {
    double *v;
 
@@ -63,8 +85,7 @@ int nl,nh;
    return v-nl;
 }
 
-int *ivector_px(nl,nh)
-int nl,nh;
+int *ivector_px(int nl, int nh)
 {
    int *v;
 
@@ -73,8 +94,7 @@ int nl,nh;
    return v-nl;
 }
 
-double *dvector_px(nl,nh)
-int nl,nh;
+double *dvector_px(int nl, int nh)
 {
    double *v;
 
@@ -83,8 +103,7 @@ int nl,nh;
    return v-nl;
 }
 
-double **matrix_px(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **matrix_px(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -101,8 +120,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **dmatrix_px(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **dmatrix_px(int nrl, int nrh, int ncl, int nch)
 {
    int i;
    double **m;
@@ -119,8 +137,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-int **imatrix_px(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+int **imatrix_px(int nrl, int nrh, int ncl, int nch)
 {
    int i,**m;
 
@@ -136,9 +153,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **submatrix_px(a,oldrl,oldrh,oldcl,oldch,newrl,newcl)
-double **a;
-int oldrl,oldrh,oldcl,oldch,newrl,newcl;
+double **submatrix_px(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
 {
    int i,j;
    double **m;
@@ -152,29 +167,22 @@ int oldrl,oldrh,oldcl,oldch,newrl,newcl;
    return m;
 }
 
-void free_vector_px(v,nl,nh)
-double *v;
-int nl,nh;
+void free_vector_px(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_ivector_px(v,nl,nh)
-int *v,nl,nh;
+void free_ivector_px(int *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_dvector_px(v,nl,nh)
-double *v;
-int nl,nh;
+void free_dvector_px(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_matrix_px(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_matrix_px(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -182,9 +190,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_dmatrix_px(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_dmatrix_px(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -192,9 +198,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_imatrix_px(m,nrl,nrh,ncl,nch)
-int **m;
-int nrl,nrh,ncl,nch;
+void free_imatrix_px(int **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -202,16 +206,12 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_submatrix_px(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_submatrix_px(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double **convert_matrix_px(a,nrl,nrh,ncl,nch)
-double *a;
-int nrl,nrh,ncl,nch;
+double **convert_matrix_px(double *a, int nrl, int nrh, int ncl, int nch)
 {
    int i,j,nrow,ncol;
    double **m;
@@ -225,21 +225,16 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-void free_convert_matrix_px(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_convert_matrix_px(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double qromb_px(func,a,b)
-double a,b;
-double (*func)();
+double qromb_px(double (*func)(double), double a, double b)
 {
-   double ss,dss,trapzd_px();
+   double ss, dss;
    double s[JMAXP+1],h[JMAXP+1];
    int j;
-   void polint_px(),nrerror_px();
 
    h[1]=1.0;
    for (j=1;j<=JMAX;j++) {
@@ -257,10 +252,7 @@ double (*func)();
    return ss;
 }
 
-double trapzd_px(func,a,b,n)
-double a,b;
-double (*func)();                           /* ANSI: double (*func)(double); */
-int n;
+double trapzd_px(double (*func)(double), double a, double b, int n)
 {
    double x,tnm,sum,del;
    static double s;
@@ -281,14 +273,11 @@ int n;
    }
 }
 
-void polint_px(xa,ya,n,x,y,dy)
-double xa[],ya[],x,*y,*dy;
-int n;
+void polint_px(double xa[], double ya[], int n, double x, double *y, double *dy)
 {
    int i,m,ns=1;
    double den,dif,dift,ho,hp,w;
-   double *c,*d,*vector_px();
-   void nrerror_px(),free_vector_px();
+   double *c, *d;
 
    dif=fabs(x-xa[1]);
    c=vector_px(1,n);
@@ -318,13 +307,10 @@ int n;
    free_vector_px(c,1,n);
 }
 
-void spline_px(x,y,n,yp1,ypn,y2)
-double x[],y[],yp1,ypn,y2[];
-int n;
+void spline_px(double x[], double y[], int n, double yp1, double ypn, double y2[])
 {
    int i,k;
-   double p,qn,sig,un,*u,*vector_px();
-   void free_vector_px();
+   double p, qn, sig, un, *u;
 
    u=vector_px(1,n-1);
    if (yp1 > 0.99e30)
@@ -352,13 +338,10 @@ int n;
    free_vector_px(u,1,n-1);
 }
 
-void splint_px(xa,ya,y2a,n,x,y)
-double xa[],ya[],y2a[],x,*y;
-int n;
+void splint_px(double xa[], double ya[], double y2a[], int n, double x, double *y)
 {
    int klo,khi,k;
    double h,b,a;
-   void nrerror_px();
 
    klo=1;
    khi=n;
@@ -374,14 +357,11 @@ int n;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
 }
 
-void gaussj_px(a,n,b,m)
-double **a,**b;
-int n,m;
+void gaussj_px(double **a, int n, double **b, int m)
 {
    int *indxc,*indxr,*ipiv;
-   int i,icol=1,irow=1,j,k,l,ll,*ivector_px();
+   int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
-   void nrerror_px(),free_ivector_px();
 
    indxc=ivector_px(1,n);
    indxr=ivector_px(1,n);
@@ -1236,8 +1216,8 @@ int phxi
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1267,8 +1247,8 @@ int phxi
 	
 	if (lines && electron >= 3) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -1304,8 +1284,8 @@ int phxi
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1335,8 +1315,8 @@ int phxi
 	
 	if (lines) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -1380,7 +1360,7 @@ int phxi
 	/* Transitions */
 	if (lines) {
 	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	  sprintf(temp,"%s%2da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    g_j=g_j+1.;
@@ -1401,7 +1381,7 @@ int phxi
 
 	/* Edges */
 	ext="pi_short"; 
-	sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	sprintf(temp,"%s%2da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1717,7 +1697,7 @@ int phxi
 
 	  sprintf(root,"%s/photoion_dat/L_shell/trates%s",DATADIR,element_name);
 	  ext="dat";
-	  sprintf(temp,"%s.%s\0",root,ext);
+	  sprintf(temp,"%s.%s",root,ext);
 	  input=fopen(temp,"r");
 	  /* Read in RR and DR contributions */
 	  if (verbose) printf("Read in total RR and DR rates for %2d %2d\n",element,electron);
@@ -1743,11 +1723,11 @@ int phxi
 	  if (verbose) printf("PE rates %2d %2d ...\n",element,electron);
 	  sprintf(root,"%s/photoion_dat/L_shell/",DATADIR);
 	  ext="tr_shorter"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fgets(line,LENGTH,input) != NULL) {
-	    sprintf(sjunk,"\0");
+	    sjunk[0] = '\0';
 	    sscanf(line,"%d%d%d%d%lf%lf%lf",&j,&jjunk,&i,&ijunk,&en,&ftemp,&Atemp);
 	    /*    sscanf(line,"%d%d%d%d%lf%lf%lf%lf%lf",&j,&jjunk,&i,&ijunk,&en,&ftemp,&Atemp,&DECAYRATE,&AIRATE);*/
 	    j=j+1;
@@ -1788,8 +1768,8 @@ int phxi
 	  
 	  if (verbose) printf("PI rates %2d %2d ... \n",element,electron);
 	  ext="pi_short"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	    g_i=g_i+1.;
@@ -1824,12 +1804,12 @@ int phxi
 	  EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
 
 	  ext="dat"; 
-	  if (electron<10) sprintf(temp,"%s%s0%d.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2d.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%d.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2d.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  ext="rr_short"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  /*	  for (k=1;k<=17;++k) fgets(line,LENGTH,input);*/
 	  while (fgets(line,LENGTH,input) != NULL) {  
 	    sscanf(line,"%d%lf%d%d%d%lf%lf%lf%lf",&ijunk,&(L_kT[1]),&typenum,&itemp,&jtemp,&en,&lambda,&(RR_line[1]),&(DR_line[1]));
@@ -2168,13 +2148,13 @@ int phxi
   /* CV - Sy2, completely unsaturated lines + no intrinsic continuum */
   if (type==8) for (k=1;k<=SPECBINS;++k) E_spectrum[k]=type2_spectrum[k];
   if (fileincr >= 0) {
-    sprintf(specfile_name,"l_output_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"l_output_%d.qdp",fileincr);
     l_output=fopen(specfile_name,"w");
-    sprintf(specfile_name,"E_output_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"E_output_%d.qdp",fileincr);
     E_output=fopen(specfile_name,"w");
-    sprintf(specfile_name,"E_spectrum_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"E_spectrum_%d.qdp",fileincr);
     E_specfile=fopen(specfile_name,"w");
-    sprintf(specfile_name,"l_spectrum_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"l_spectrum_%d.qdp",fileincr);
     l_specfile=fopen(specfile_name,"w");
     fprintf(E_specfile,"\n\n\n");
     fprintf(l_specfile,"\n\n\n");

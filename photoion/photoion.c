@@ -42,10 +42,33 @@ FCALLSCSUB6(photoion,PHOTOION,photoion,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 /* START */
 
-void nrerror_pi(error_text)
-char error_text[];
+/* Forward declarations (converted from K&R style). */
+void nrerror_pi(char error_text[]);
+double *vector_pi(int nl, int nh);
+int *ivector_pi(int nl, int nh);
+double *dvector_pi(int nl, int nh);
+double **matrix_pi(int nrl, int nrh, int ncl, int nch);
+double **dmatrix_pi(int nrl, int nrh, int ncl, int nch);
+int **imatrix_pi(int nrl, int nrh, int ncl, int nch);
+double **submatrix_pi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
+void free_vector_pi(double *v, int nl, int nh);
+void free_ivector_pi(int *v, int nl, int nh);
+void free_dvector_pi(double *v, int nl, int nh);
+void free_matrix_pi(double **m, int nrl, int nrh, int ncl, int nch);
+void free_dmatrix_pi(double **m, int nrl, int nrh, int ncl, int nch);
+void free_imatrix_pi(int **m, int nrl, int nrh, int ncl, int nch);
+void free_submatrix_pi(double **b, int nrl, int nrh, int ncl, int nch);
+double **convert_matrix_pi(double *a, int nrl, int nrh, int ncl, int nch);
+void free_convert_matrix_pi(double **b, int nrl, int nrh, int ncl, int nch);
+double qromb_pi(double (*func)(double), double a, double b);
+double trapzd_pi(double (*func)(double), double a, double b, int n);
+void polint_pi(double xa[], double ya[], int n, double x, double *y, double *dy);
+void spline_pi(double x[], double y[], int n, double yp1, double ypn, double y2[]);
+void splint_pi(double xa[], double ya[], double y2a[], int n, double x, double *y);
+void gaussj_pi(double **a, int n, double **b, int m);
+
+void nrerror_pi(char error_text[])
 {
-   void exit();
 
    /*fprintf(stderr,"Numerical Recipes run-time error...\n");
    fprintf(stderr,"%s\n",error_text);
@@ -53,8 +76,7 @@ char error_text[];
    exit(1);*/
 }
 
-double *vector_pi(nl,nh)
-int nl,nh;
+double *vector_pi(int nl, int nh)
 {
    double *v;
    int i,sz;
@@ -66,8 +88,7 @@ int nl,nh;
    return v-nl;
 }
 
-int *ivector_pi(nl,nh)
-int nl,nh;
+int *ivector_pi(int nl, int nh)
 {
    int *v, i, sz;
 
@@ -78,8 +99,7 @@ int nl,nh;
    return v-nl;
 }
 
-double *dvector_pi(nl,nh)
-int nl,nh;
+double *dvector_pi(int nl, int nh)
 {
    double *v;
    int i,sz;
@@ -91,8 +111,7 @@ int nl,nh;
    return v-nl;
 }
 
-double **matrix_pi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **matrix_pi(int nrl, int nrh, int ncl, int nch)
 {
    int i, j, sz;
    double **m, *m_i;
@@ -112,8 +131,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **dmatrix_pi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+double **dmatrix_pi(int nrl, int nrh, int ncl, int nch)
 {
    int i ,j, sz;
    double **m, *m_i;
@@ -133,8 +151,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-int **imatrix_pi(nrl,nrh,ncl,nch)
-int nrl,nrh,ncl,nch;
+int **imatrix_pi(int nrl, int nrh, int ncl, int nch)
 {
    int i,**m, *m_i, j, sz;
 
@@ -153,9 +170,7 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-double **submatrix_pi(a,oldrl,oldrh,oldcl,oldch,newrl,newcl)
-double **a;
-int oldrl,oldrh,oldcl,oldch,newrl,newcl;
+double **submatrix_pi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
 {
    int i,j;
    double **m;
@@ -169,29 +184,22 @@ int oldrl,oldrh,oldcl,oldch,newrl,newcl;
    return m;
 }
 
-void free_vector_pi(v,nl,nh)
-double *v;
-int nl,nh;
+void free_vector_pi(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_ivector_pi(v,nl,nh)
-int *v,nl,nh;
+void free_ivector_pi(int *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_dvector_pi(v,nl,nh)
-double *v;
-int nl,nh;
+void free_dvector_pi(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
 
-void free_matrix_pi(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_matrix_pi(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -199,9 +207,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_dmatrix_pi(m,nrl,nrh,ncl,nch)
-double **m;
-int nrl,nrh,ncl,nch;
+void free_dmatrix_pi(double **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -209,9 +215,7 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_imatrix_pi(m,nrl,nrh,ncl,nch)
-int **m;
-int nrl,nrh,ncl,nch;
+void free_imatrix_pi(int **m, int nrl, int nrh, int ncl, int nch)
 {
    int i;
 
@@ -219,16 +223,12 @@ int nrl,nrh,ncl,nch;
    free((char*) (m+nrl));
 }
 
-void free_submatrix_pi(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_submatrix_pi(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double **convert_matrix_pi(a,nrl,nrh,ncl,nch)
-double *a;
-int nrl,nrh,ncl,nch;
+double **convert_matrix_pi(double *a, int nrl, int nrh, int ncl, int nch)
 {
    int i,j,nrow,ncol;
    double **m;
@@ -242,21 +242,16 @@ int nrl,nrh,ncl,nch;
    return m;
 }
 
-void free_convert_matrix_pi(b,nrl,nrh,ncl,nch)
-double **b;
-int nrl,nrh,ncl,nch;
+void free_convert_matrix_pi(double **b, int nrl, int nrh, int ncl, int nch)
 {
    free((char*) (b+nrl));
 }
 
-double qromb_pi(func,a,b)
-double a,b;
-double (*func)();
+double qromb_pi(double (*func)(double), double a, double b)
 {
-   double ss,dss,trapzd_pi();
+   double ss, dss;
    double s[JMAXP+1],h[JMAXP+1];
    int j;
-   void polint_pi(),nrerror_pi();
 
    h[1]=1.0;
    for (j=1;j<=JMAX;j++) {
@@ -274,10 +269,7 @@ double (*func)();
    return ss;
 }
 
-double trapzd_pi(func,a,b,n)
-double a,b;
-double (*func)();                           /* ANSI: double (*func)(double); */
-int n;
+double trapzd_pi(double (*func)(double), double a, double b, int n)
 {
    double x,tnm,sum,del;
    static double s;
@@ -298,14 +290,11 @@ int n;
    }
 }
 
-void polint_pi(xa,ya,n,x,y,dy)
-double xa[],ya[],x,*y,*dy;
-int n;
+void polint_pi(double xa[], double ya[], int n, double x, double *y, double *dy)
 {
    int i,m,ns=1;
    double den,dif,dift,ho,hp,w;
-   double *c,*d,*vector_pi();
-   void nrerror_pi(),free_vector_pi();
+   double *c, *d;
 
    dif=fabs(x-xa[1]);
    c=vector_pi(1,n);
@@ -335,13 +324,10 @@ int n;
    free_vector_pi(c,1,n);
 }
 
-void spline_pi(x,y,n,yp1,ypn,y2)
-double x[],y[],yp1,ypn,y2[];
-int n;
+void spline_pi(double x[], double y[], int n, double yp1, double ypn, double y2[])
 {
    int i,k;
-   double p,qn,sig,un,*u,*vector_pi();
-   void free_vector_pi();
+   double p, qn, sig, un, *u;
 
    u=vector_pi(1,n-1);
    if (yp1 > 0.99e30)
@@ -369,13 +355,10 @@ int n;
    free_vector_pi(u,1,n-1);
 }
 
-void splint_pi(xa,ya,y2a,n,x,y)
-double xa[],ya[],y2a[],x,*y;
-int n;
+void splint_pi(double xa[], double ya[], double y2a[], int n, double x, double *y)
 {
    int klo,khi,k;
    double h,b,a;
-   void nrerror_pi();
 
    klo=1;
    khi=n;
@@ -391,14 +374,11 @@ int n;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
 }
 
-void gaussj_pi(a,n,b,m)
-double **a,**b;
-int n,m;
+void gaussj_pi(double **a, int n, double **b, int m)
 {
    int *indxc,*indxr,*ipiv;
-   int i,icol=1,irow=1,j,k,l,ll,*ivector_pi();
+   int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
-   void nrerror_pi(),free_ivector_pi();
 
    indxc=ivector_pi(1,n);
    indxr=ivector_pi(1,n);
@@ -1436,8 +1416,8 @@ int photoion
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1467,8 +1447,8 @@ int photoion
 	
 	if (lines && electron >= 3) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -1504,8 +1484,8 @@ int photoion
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	else sprintf(temp,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1535,8 +1515,8 @@ int photoion
 	
 	if (lines) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s\0",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s\0",root,electron,ext);
+	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
+	  else sprintf(temp,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -1580,7 +1560,7 @@ int photoion
 	/* Transitions */
 	if (lines) {
 	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	  sprintf(temp,"%s%2da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    g_j=g_j+1.;
@@ -1601,7 +1581,7 @@ int photoion
 
 	/* Edges */
 	ext="pi_short"; 
-	sprintf(temp,"%s%2da.%s\0",root,electron,ext);
+	sprintf(temp,"%s%2da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  g_i=g_i+1.;
@@ -1917,7 +1897,7 @@ int photoion
 
 	  sprintf(root,"%s/photoion_dat/L_shell/trates%s",DATADIR,element_name);
 	  ext="dat";
-	  sprintf(temp,"%s.%s\0",root,ext);
+	  sprintf(temp,"%s.%s",root,ext);
 	  input=fopen(temp,"r");
 	  /* Read in RR and DR contributions */
 	  if (verbose) printf("Read in total RR and DR rates for %2d %2d\n",element,electron);
@@ -1943,11 +1923,11 @@ int photoion
 	  if (verbose) printf("PE rates %2d %2d ...\n",element,electron);
 	  sprintf(root,"%s/photoion_dat/L_shell/",DATADIR);
 	  ext="tr_shorter"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fgets(line,LENGTH,input) != NULL) {
-	    sprintf(sjunk,"\0");
+	    sjunk[0] = '\0';
 	    sscanf(line,"%d%d%d%d%lf%lf%lf",&j,&jjunk,&i,&ijunk,&en,&ftemp,&Atemp);
 	    /*    sscanf(line,"%d%d%d%d%lf%lf%lf%lf%lf",&j,&jjunk,&i,&ijunk,&en,&ftemp,&Atemp,&DECAYRATE,&AIRATE);*/
 	    j=j+1;
@@ -1988,8 +1968,8 @@ int photoion
 	  
 	  if (verbose) printf("PI rates %2d %2d ... \n",element,electron);
 	  ext="pi_short"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	    g_i=g_i+1.;
@@ -2024,12 +2004,12 @@ int photoion
 	  EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
 
 	  ext="dat"; 
-	  if (electron<10) sprintf(temp,"%s%s0%d.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2d.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%d.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2d.%s",root,element_name,electron,ext);
 	  input=fopen(temp,"r");
 	  ext="rr_short"; 
-	  if (electron<10) sprintf(temp,"%s%s0%da.%s\0",root,element_name,electron,ext);
-	  else  sprintf(temp,"%s%s%2da.%s\0",root,element_name,electron,ext);
+	  if (electron<10) sprintf(temp,"%s%s0%da.%s",root,element_name,electron,ext);
+	  else  sprintf(temp,"%s%s%2da.%s",root,element_name,electron,ext);
 	  /*	  for (k=1;k<=17;++k) fgets(line,LENGTH,input);*/
 	  while (fgets(line,LENGTH,input) != NULL) {  
 	    sscanf(line,"%d%lf%d%d%d%lf%lf%lf%lf",&ijunk,&(L_kT[1]),&typenum,&itemp,&jtemp,&en,&lambda,&(RR_line[1]),&(DR_line[1]));
@@ -2368,13 +2348,13 @@ int photoion
   /* CV - Sy2, completely unsaturated lines + no intrinsic continuum */
   if (type==8) for (k=1;k<=SPECBINS;++k) E_spectrum[k]=type2_spectrum[k];
   if (fileincr >= 0) {
-    sprintf(specfile_name,"l_output_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"l_output_%d.qdp",fileincr);
     l_output=fopen(specfile_name,"w");
-    sprintf(specfile_name,"E_output_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"E_output_%d.qdp",fileincr);
     E_output=fopen(specfile_name,"w");
-    sprintf(specfile_name,"E_spectrum_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"E_spectrum_%d.qdp",fileincr);
     E_specfile=fopen(specfile_name,"w");
-    sprintf(specfile_name,"l_spectrum_%d.qdp\0",fileincr);
+    sprintf(specfile_name,"l_spectrum_%d.qdp",fileincr);
     l_specfile=fopen(specfile_name,"w");
     fprintf(E_specfile,"\n\n\n");
     fprintf(l_specfile,"\n\n\n");

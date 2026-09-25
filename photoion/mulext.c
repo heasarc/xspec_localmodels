@@ -35,10 +35,13 @@ have the name "mulext.qdp":
      lambda [A]       Half-Bin [A]       Spectrum [photons/cm^2/s/A]
 */  
 
-void nrerror_me(error_text)
-char error_text[];
+/* Forward declarations (converted from K&R style). */
+void nrerror_me(char error_text[]);
+double *dvector_me(int nl, int nh);
+void free_dvector_me(double *v, int nl, int nh);
+
+void nrerror_me(char error_text[])
 {
-   void exit();
 
    /*fprintf(stderr,"Numerical Recipes run-time error...\n");
    fprintf(stderr,"%s\n",error_text);
@@ -46,8 +49,7 @@ char error_text[];
    exit(1);*/
 }
 
-double *dvector_me(nl,nh)
-int nl,nh;
+double *dvector_me(int nl, int nh)
 {
    double *v;
 
@@ -56,9 +58,7 @@ int nl,nh;
    return v-nl;
 }
 
-void free_dvector_me(v,nl,nh)
-double *v;
-int nl,nh;
+void free_dvector_me(double *v, int nl, int nh)
 {
    free((char*) (v+nl));
 }
