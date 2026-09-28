@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_alloc.h"
+
 int xiabs
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
 
@@ -44,23 +46,6 @@ FCALLSCSUB6(xiabs,XIABS,xiabs,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 /* START */
 
 /* Forward declarations (converted from K&R style). */
-void nrerror_xi(char error_text[]);
-double *vector_xi(int nl, int nh);
-int *ivector_xi(int nl, int nh);
-double *dvector_xi(int nl, int nh);
-double **matrix_xi(int nrl, int nrh, int ncl, int nch);
-double **dmatrix_xi(int nrl, int nrh, int ncl, int nch);
-int **imatrix_xi(int nrl, int nrh, int ncl, int nch);
-double **submatrix_xi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
-void free_vector_xi(double *v, int nl, int nh);
-void free_ivector_xi(int *v, int nl, int nh);
-void free_dvector_xi(double *v, int nl, int nh);
-void free_matrix_xi(double **m, int nrl, int nrh, int ncl, int nch);
-void free_dmatrix_xi(double **m, int nrl, int nrh, int ncl, int nch);
-void free_imatrix_xi(int **m, int nrl, int nrh, int ncl, int nch);
-void free_submatrix_xi(double **b, int nrl, int nrh, int ncl, int nch);
-double **convert_matrix_xi(double *a, int nrl, int nrh, int ncl, int nch);
-void free_convert_matrix_xi(double **b, int nrl, int nrh, int ncl, int nch);
 double qromb_xi(double (*func)(double), double a, double b);
 double trapzd_xi(double (*func)(double), double a, double b, int n);
 void polint_xi(double xa[], double ya[], int n, double x, double *y, double *dy);
@@ -68,168 +53,6 @@ void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[
 void splint_xi(double xa[], double ya[], double y2a[], int n, double x, double *y);
 void gaussj_xi(double **a, int n, double **b, int m);
 
-void nrerror_xi(char error_text[])
-{
-
-   /*fprintf(stderr,"Numerical Recipes run-time error...\n");
-   fprintf(stderr,"%s\n",error_text);
-   fprintf(stderr,"...now exiting to system...\n");
-   exit(1);*/
-}
-
-double *vector_xi(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_xi("allocation failure in vector()");
-   return v-nl;
-}
-
-int *ivector_xi(int nl, int nh)
-{
-   int *v;
-
-   v=(int *)malloc((unsigned) (nh-nl+1)*sizeof(int));
-   if (!v) nrerror_xi("allocation failure in ivector()");
-   return v-nl;
-}
-
-double *dvector_xi(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_xi("allocation failure in dvector()");
-   return v-nl;
-}
-
-double **matrix_xi(int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-   double **m;
-
-   m=(double **) malloc((unsigned) (nrh-nrl+1)*sizeof(double*));
-   if (!m) nrerror_xi("allocation failure 1 in matrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(double *) malloc((unsigned) (nch-ncl+1)*sizeof(double));
-      if (!m[i]) nrerror_xi("allocation failure 2 in matrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-double **dmatrix_xi(int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-   double **m;
-
-   m=(double **) malloc((unsigned) (nrh-nrl+1)*sizeof(double*));
-   if (!m) nrerror_xi("allocation failure 1 in dmatrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(double *) malloc((unsigned) (nch-ncl+1)*sizeof(double));
-      if (!m[i]) nrerror_xi("allocation failure 2 in dmatrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-int **imatrix_xi(int nrl, int nrh, int ncl, int nch)
-{
-   int i,**m;
-
-   m=(int **)malloc((unsigned) (nrh-nrl+1)*sizeof(int*));
-   if (!m) nrerror_xi("allocation failure 1 in imatrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(int *)malloc((unsigned) (nch-ncl+1)*sizeof(int));
-      if (!m[i]) nrerror_xi("allocation failure 2 in imatrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-double **submatrix_xi(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
-{
-   int i,j;
-   double **m;
-
-   m=(double **) malloc((unsigned) (oldrh-oldrl+1)*sizeof(double*));
-   if (!m) nrerror_xi("allocation failure in submatrix()");
-   m -= newrl;
-
-   for(i=oldrl,j=newrl;i<=oldrh;i++,j++) m[j]=a[i]+oldcl-newcl;
-
-   return m;
-}
-
-void free_vector_xi(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_ivector_xi(int *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_dvector_xi(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_matrix_xi(double **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_dmatrix_xi(double **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_imatrix_xi(int **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_submatrix_xi(double **b, int nrl, int nrh, int ncl, int nch)
-{
-   free((char*) (b+nrl));
-}
-
-double **convert_matrix_xi(double *a, int nrl, int nrh, int ncl, int nch)
-{
-   int i,j,nrow,ncol;
-   double **m;
-
-   nrow=nrh-nrl+1;
-   ncol=nch-ncl+1;
-   m = (double **) malloc((unsigned) (nrow)*sizeof(double*));
-   if (!m) nrerror_xi("allocation failure in convert_matrix()");
-   m -= nrl;
-   for(i=0,j=nrl;i<=nrow-1;i++,j++) m[j]=a+ncol*i-ncl;
-   return m;
-}
-
-void free_convert_matrix_xi(double **b, int nrl, int nrh, int ncl, int nch)
-{
-   free((char*) (b+nrl));
-}
 
 double qromb_xi(double (*func)(double), double a, double b)
 {
@@ -248,7 +71,7 @@ double qromb_xi(double (*func)(double), double a, double b)
       s[j+1]=s[j];
       h[j+1]=0.25*h[j];
    }
-   nrerror_xi("Too many steps in routine QROMB");
+   pion_nrerror("Too many steps in routine QROMB");
    /*     printf("not accurate\n");*/
    return ss;
 }
@@ -281,8 +104,8 @@ void polint_xi(double xa[], double ya[], int n, double x, double *y, double *dy)
    double *c, *d;
 
    dif=fabs(x-xa[1]);
-   c=vector_xi(1,n);
-   d=vector_xi(1,n);
+   c=pion_vector(1,n);
+   d=pion_vector(1,n);
    for (i=1;i<=n;i++) {
       if ( (dift=fabs(x-xa[i])) < dif) {
          ns=i;
@@ -297,15 +120,15 @@ void polint_xi(double xa[], double ya[], int n, double x, double *y, double *dy)
          ho=xa[i]-x;
          hp=xa[i+m]-x;
          w=c[i+1]-d[i];
-         if ( (den=ho-hp) == 0.0) nrerror_xi("Error in routine POLINT");
+         if ( (den=ho-hp) == 0.0) pion_nrerror("Error in routine POLINT");
          den=w/den;
          d[i]=hp*den;
          c[i]=ho*den;
       }
       *y += (*dy=(2*ns < (n-m) ? c[ns+1] : d[ns--]));
    }
-   free_vector_xi(d,1,n);
-   free_vector_xi(c,1,n);
+   pion_free_vector(d,1,n);
+   pion_free_vector(c,1,n);
 }
 
 void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[])
@@ -313,7 +136,7 @@ void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[
    int i,k;
    double p, qn, sig, un, *u;
 
-   u=vector_xi(1,n-1);
+   u=pion_vector(1,n-1);
    if (yp1 > 0.99e30)
       y2[1]=u[1]=0.0;
    else {
@@ -336,7 +159,7 @@ void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[
    y2[n]=(un-qn*u[n-1])/(qn*y2[n-1]+1.0);
    for (k=n-1;k>=1;k--)
       y2[k]=y2[k]*y2[k+1]+u[k];
-   free_vector_xi(u,1,n-1);
+   pion_free_vector(u,1,n-1);
 }
 
 void splint_xi(double xa[], double ya[], double y2a[], int n, double x, double *y)
@@ -352,7 +175,7 @@ void splint_xi(double xa[], double ya[], double y2a[], int n, double x, double *
       else klo=k;
    }
    h=xa[khi]-xa[klo];
-   if (h == 0.0) nrerror_xi("Bad XA input to routine SPLINT");
+   if (h == 0.0) pion_nrerror("Bad XA input to routine SPLINT");
    a=(xa[khi]-x)/h;
    b=(x-xa[klo])/h;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
@@ -364,9 +187,9 @@ void gaussj_xi(double **a, int n, double **b, int m)
    int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
 
-   indxc=ivector_xi(1,n);
-   indxr=ivector_xi(1,n);
-   ipiv=ivector_xi(1,n);
+   indxc=pion_ivector(1,n);
+   indxr=pion_ivector(1,n);
+   ipiv=pion_ivector(1,n);
    for (j=1;j<=n;j++) ipiv[j]=0;
    for (i=1;i<=n;i++) {
       big=0.0;
@@ -379,7 +202,7 @@ void gaussj_xi(double **a, int n, double **b, int m)
                      irow=j;
                      icol=k;
                   }
-               } else if (ipiv[k] > 1) nrerror_xi("GAUSSJ: Singular Matrix-1");
+               } else if (ipiv[k] > 1) pion_nrerror("GAUSSJ: Singular Matrix-1");
             }
       ++(ipiv[icol]);
       if (irow != icol) {
@@ -388,7 +211,7 @@ void gaussj_xi(double **a, int n, double **b, int m)
       }
       indxr[i]=irow;
       indxc[i]=icol;
-      if (a[icol][icol] == 0.0) nrerror_xi("GAUSSJ: Singular Matrix-2");
+      if (a[icol][icol] == 0.0) pion_nrerror("GAUSSJ: Singular Matrix-2");
       pivinv=1.0/a[icol][icol];
       a[icol][icol]=1.0;
       for (l=1;l<=n;l++) a[icol][l] *= pivinv;
@@ -406,9 +229,9 @@ void gaussj_xi(double **a, int n, double **b, int m)
          for (k=1;k<=n;k++)
             SWAP_xi(a[k][indxr[l]],a[k][indxc[l]]);
    }
-   free_ivector_xi(ipiv,1,n);
-   free_ivector_xi(indxr,1,n);
-   free_ivector_xi(indxc,1,n);
+   pion_free_ivector(ipiv,1,n);
+   pion_free_ivector(indxr,1,n);
+   pion_free_ivector(indxc,1,n);
 }
 
 /* FINISH */
@@ -599,12 +422,12 @@ int xiabs
   sjunk4=malloc(50);
   line=malloc(400);
 
-  Nion=dmatrix_xi(1,28,1,28);
+  Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
 
   DATADIR=FGMSTR(name);
 
-  ABUND=dvector_xi(1,30);
+  ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
   sprintf(temp,"%s/photoion_dat/abundance.dat",DATADIR);
   input=fopen(temp,"r");
@@ -617,7 +440,7 @@ int xiabs
   }
   fclose(input);
 
-  oshe=dvector_xi(1,30);
+  oshe=pion_dvector(1,30);
   sprintf(temp,"%s/photoion_dat/oscillator_he.dat",DATADIR);
   input=fopen(temp,"r");
   while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
@@ -658,8 +481,8 @@ int xiabs
   FRACXINUM=0;
   while (fscanf(input,"%lf%lf",&djunk,&djunk)!=EOF) ++FRACXINUM;
   fclose(input);
-  xi_frac_grid=dvector_xi(1,FRACXINUM);  
-  frac_grid=dvector_xi(1,FRACXINUM);  
+  xi_frac_grid=pion_dvector(1,FRACXINUM);  
+  frac_grid=pion_dvector(1,FRACXINUM);  
   
   input=fopen(temp,"r");
   for (i=1;i<=FRACXINUM;++i) fscanf(input,"%lf%lf",&(xi_frac_grid[i]),&(frac_grid[i]));
@@ -668,10 +491,10 @@ int xiabs
   sprintf(temp,"%s/photoion_dat/xi_ions.dat",DATADIR);
   input=fopen(temp,"r");
   fscanf(input,"%d",&FIONXINUM);
-  xi_fion_grid=dvector_xi(1,FIONXINUM);  
-  fion_grid=dvector_xi(1,FIONXINUM);  
-  fion_grid_2=dvector_xi(1,FIONXINUM);  
-  ion=dmatrix_xi(1,29,1,FIONXINUM);
+  xi_fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid_2=pion_dvector(1,FIONXINUM);  
+  ion=pion_dmatrix(1,29,1,FIONXINUM);
 
   /* read in each element - where subscript for ion[2][i] = ROMAN numeral*/
   /* hydrogen */
@@ -686,9 +509,9 @@ int xiabs
     }
   }
 
-  xi_array=dvector_xi(1,XINUM);
-  fion_array=dvector_xi(1,XINUM);
-  fion_array_2=dvector_xi(1,XINUM);
+  xi_array=pion_dvector(1,XINUM);
+  fion_array=pion_dvector(1,XINUM);
+  fion_array_2=pion_dvector(1,XINUM);
   for (i=1;i<=XINUM;++i) xi_array[i]=XIMIN+(XIMAX-XIMIN)*((double) i-1)/((double) (XINUM-1));
 
   N_e=0.;
@@ -710,7 +533,7 @@ int xiabs
   
   /* All other elements: He, C, N, O, Ne, Mg, Si, S, Ar, Ca, Fe */
   /* Aluminum and Nickel not calculated by xstar */
-  list=ivector_xi(1,12);
+  list=pion_ivector(1,12);
   list[1]=1;list[2]=2; list[3]=6; list[4]=7; list[5]=8; list[6]=10; list[7]=12; list[8]=14; list[9]=16; list[10]=18; list[11]=20; list[12]=26;
   for (j=2;j<=12;++j) {
     element=list[j];
@@ -756,16 +579,16 @@ int xiabs
 
   fclose(input);
 
-  free_ivector_xi(list,1,10);
-  free_dvector_xi(xi_frac_grid,1,FRACXINUM);
-  free_dvector_xi(frac_grid,1,FRACXINUM);
-  free_dmatrix_xi(ion,1,29,1,FIONXINUM);
-  free_dvector_xi(xi_fion_grid,1,FIONXINUM);
-  free_dvector_xi(fion_grid,1,FIONXINUM);
-  free_dvector_xi(fion_grid_2,1,FIONXINUM);
-  free_dvector_xi(xi_array,1,XINUM);
-  free_dvector_xi(fion_array,1,XINUM);
-  free_dvector_xi(fion_array_2,1,XINUM);
+  pion_free_ivector(list,1,10);
+  pion_free_dvector(xi_frac_grid,1,FRACXINUM);
+  pion_free_dvector(frac_grid,1,FRACXINUM);
+  pion_free_dmatrix(ion,1,29,1,FIONXINUM);
+  pion_free_dvector(xi_fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid_2,1,FIONXINUM);
+  pion_free_dvector(xi_array,1,XINUM);
+  pion_free_dvector(fion_array,1,XINUM);
+  pion_free_dvector(fion_array_2,1,XINUM);
 
   /* SAME AS MIABS FROM HERE ON OUT? (except for moving ABUND up )*/
 
@@ -780,26 +603,26 @@ int xiabs
 
   doppler_rad=doppler_xi(v_rad);
 
-  EGRID=dvector_xi(1,GRIDNUM);  
-  PIGRID=dvector_xi(1,GRIDNUM); 
-  PIGRID_2=dvector_xi(1,GRIDNUM);
-  RRGRID=dvector_xi(1,GRIDNUM);  
-  RRGRID_2=dvector_xi(1,GRIDNUM);
+  EGRID=pion_dvector(1,GRIDNUM);  
+  PIGRID=pion_dvector(1,GRIDNUM); 
+  PIGRID_2=pion_dvector(1,GRIDNUM);
+  RRGRID=pion_dvector(1,GRIDNUM);  
+  RRGRID_2=pion_dvector(1,GRIDNUM);
 
-  LOWE_EGRID=dvector_xi(1,LOWE_GRIDNUM);  
-  LOWE_PIGRID=dvector_xi(1,LOWE_GRIDNUM); 
-  LOWE_PIGRID_2=dvector_xi(1,LOWE_GRIDNUM);
-  LOWE_RRGRID=dvector_xi(1,LOWE_GRIDNUM); 
-  LOWE_RRGRID_2=dvector_xi(1,LOWE_GRIDNUM);
+  LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
+  LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
+  LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
+  LOWE_RRGRID=pion_dvector(1,LOWE_GRIDNUM); 
+  LOWE_RRGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
-  E_array=dvector_xi(1,SPECBINS);       /* energy axis */
-  tau=dvector_xi(1,SPECBINS);           /* total opacity in all ions */
-  tau_exc=dvector_xi(1,SPECBINS);        
-  tau_edge=dvector_xi(1,SPECBINS);       
-  ionizsigmatemp=dvector_xi(1,SPECBINS);
-  H_excite=dmatrix_xi(1,28,1,6);
-  He_excite=dmatrix_xi(1,28,1,9);
-  list=ivector_xi(1,ELEMENTS);
+  E_array=pion_dvector(1,SPECBINS);       /* energy axis */
+  tau=pion_dvector(1,SPECBINS);           /* total opacity in all ions */
+  tau_exc=pion_dvector(1,SPECBINS);        
+  tau_edge=pion_dvector(1,SPECBINS);       
+  ionizsigmatemp=pion_dvector(1,SPECBINS);
+  H_excite=pion_dmatrix(1,28,1,6);
+  He_excite=pion_dmatrix(1,28,1,9);
+  list=pion_ivector(1,ELEMENTS);
 
   for (i=1;i<=SPECBINS;++i) {
     tau[i]=0.;
@@ -1311,27 +1134,27 @@ int xiabs
   free(line);
   /*  free(element_name);
       free(ext);*/
-  free_dvector_xi(LOWE_EGRID,1,LOWE_GRIDNUM);  
-  free_dvector_xi(LOWE_PIGRID,1,LOWE_GRIDNUM); 
-  free_dvector_xi(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
-  free_dvector_xi(LOWE_RRGRID,1,LOWE_GRIDNUM); 
-  free_dvector_xi(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
-  free_dvector_xi(ABUND,1,30);
-  free_dvector_xi(oshe,1,30);
-  free_dvector_xi(E_array,1,SPECBINS);       
-  free_dvector_xi(tau,1,SPECBINS);           
-  free_dvector_xi(tau_exc,1,SPECBINS);           
-  free_dvector_xi(tau_edge,1,SPECBINS);           
-  free_dmatrix_xi(Nion,1,28,1,28);
-  free_dvector_xi(ionizsigmatemp,1,SPECBINS);
-  free_dmatrix_xi(H_excite,1,28,1,6);
-  free_dmatrix_xi(He_excite,1,28,1,9);
-  free_ivector_xi(list,1,ELEMENTS);
-  free_dvector_xi(EGRID,1,GRIDNUM);  
-  free_dvector_xi(PIGRID,1,GRIDNUM); 
-  free_dvector_xi(PIGRID_2,1,GRIDNUM);
-  free_dvector_xi(RRGRID,1,GRIDNUM);  
-  free_dvector_xi(RRGRID_2,1,GRIDNUM);
+  pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
+  pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
+  pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
+  pion_free_dvector(LOWE_RRGRID,1,LOWE_GRIDNUM); 
+  pion_free_dvector(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
+  pion_free_dvector(ABUND,1,30);
+  pion_free_dvector(oshe,1,30);
+  pion_free_dvector(E_array,1,SPECBINS);       
+  pion_free_dvector(tau,1,SPECBINS);           
+  pion_free_dvector(tau_exc,1,SPECBINS);           
+  pion_free_dvector(tau_edge,1,SPECBINS);           
+  pion_free_dmatrix(Nion,1,28,1,28);
+  pion_free_dvector(ionizsigmatemp,1,SPECBINS);
+  pion_free_dmatrix(H_excite,1,28,1,6);
+  pion_free_dmatrix(He_excite,1,28,1,9);
+  pion_free_ivector(list,1,ELEMENTS);
+  pion_free_dvector(EGRID,1,GRIDNUM);  
+  pion_free_dvector(PIGRID,1,GRIDNUM); 
+  pion_free_dvector(PIGRID_2,1,GRIDNUM);
+  pion_free_dvector(RRGRID,1,GRIDNUM);  
+  pion_free_dvector(RRGRID_2,1,GRIDNUM);
   if (verbose) printf("...done!\n");
   
   return 0;
@@ -1623,9 +1446,9 @@ double voigt_xi(double alpha,double v)
   double r1,r2;
   double H;
  
-  a=dvector_xi(1,7);
-  b=dvector_xi(1,7);
-  c=dvector_xi(1,7);
+  a=pion_dvector(1,7);
+  b=pion_dvector(1,7);
+  c=pion_dvector(1,7);
 
   a[1]=122.607931777104326;
   a[2]=214.382388694706425;
@@ -1693,9 +1516,9 @@ double voigt_xi(double alpha,double v)
     H = (q1 * q2 + r1 * r2) / (q2 * q2 + r2 * r2);
   }
 
-  free_dvector_xi(a,1,7);
-  free_dvector_xi(b,1,7);
-  free_dvector_xi(c,1,7);
+  pion_free_dvector(a,1,7);
+  pion_free_dvector(b,1,7);
+  pion_free_dvector(c,1,7);
   
   return H;
 }

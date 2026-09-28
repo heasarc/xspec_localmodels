@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_alloc.h"
+
 int vneutral
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
 
@@ -44,23 +46,6 @@ FCALLSCSUB6(vneutral,VNEUTRAL,vneutral,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 /* START */
 
 /* Forward declarations (converted from K&R style). */
-void nrerror_vn(char error_text[]);
-double *vector_vn(int nl, int nh);
-int *ivector_vn(int nl, int nh);
-double *dvector_vn(int nl, int nh);
-double **matrix_vn(int nrl, int nrh, int ncl, int nch);
-double **dmatrix_vn(int nrl, int nrh, int ncl, int nch);
-int **imatrix_vn(int nrl, int nrh, int ncl, int nch);
-double **submatrix_vn(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl);
-void free_vector_vn(double *v, int nl, int nh);
-void free_ivector_vn(int *v, int nl, int nh);
-void free_dvector_vn(double *v, int nl, int nh);
-void free_matrix_vn(double **m, int nrl, int nrh, int ncl, int nch);
-void free_dmatrix_vn(double **m, int nrl, int nrh, int ncl, int nch);
-void free_imatrix_vn(int **m, int nrl, int nrh, int ncl, int nch);
-void free_submatrix_vn(double **b, int nrl, int nrh, int ncl, int nch);
-double **convert_matrix_vn(double *a, int nrl, int nrh, int ncl, int nch);
-void free_convert_matrix_vn(double **b, int nrl, int nrh, int ncl, int nch);
 double qromb_vn(double (*func)(double), double a, double b);
 double trapzd_vn(double (*func)(double), double a, double b, int n);
 void polint_vn(double xa[], double ya[], int n, double x, double *y, double *dy);
@@ -68,168 +53,6 @@ void spline_vn(double x[], double y[], int n, double yp1, double ypn, double y2[
 void splint_vn(double xa[], double ya[], double y2a[], int n, double x, double *y);
 void gaussj_vn(double **a, int n, double **b, int m);
 
-void nrerror_vn(char error_text[])
-{
-
-   /*fprintf(stderr,"Numerical Recipes run-time error...\n");
-   fprintf(stderr,"%s\n",error_text);
-   fprintf(stderr,"...now exiting to system...\n");
-   exit(1);*/
-}
-
-double *vector_vn(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_vn("allocation failure in vector()");
-   return v-nl;
-}
-
-int *ivector_vn(int nl, int nh)
-{
-   int *v;
-
-   v=(int *)malloc((unsigned) (nh-nl+1)*sizeof(int));
-   if (!v) nrerror_vn("allocation failure in ivector()");
-   return v-nl;
-}
-
-double *dvector_vn(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_vn("allocation failure in dvector()");
-   return v-nl;
-}
-
-double **matrix_vn(int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-   double **m;
-
-   m=(double **) malloc((unsigned) (nrh-nrl+1)*sizeof(double*));
-   if (!m) nrerror_vn("allocation failure 1 in matrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(double *) malloc((unsigned) (nch-ncl+1)*sizeof(double));
-      if (!m[i]) nrerror_vn("allocation failure 2 in matrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-double **dmatrix_vn(int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-   double **m;
-
-   m=(double **) malloc((unsigned) (nrh-nrl+1)*sizeof(double*));
-   if (!m) nrerror_vn("allocation failure 1 in dmatrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(double *) malloc((unsigned) (nch-ncl+1)*sizeof(double));
-      if (!m[i]) nrerror_vn("allocation failure 2 in dmatrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-int **imatrix_vn(int nrl, int nrh, int ncl, int nch)
-{
-   int i,**m;
-
-   m=(int **)malloc((unsigned) (nrh-nrl+1)*sizeof(int*));
-   if (!m) nrerror_vn("allocation failure 1 in imatrix()");
-   m -= nrl;
-
-   for(i=nrl;i<=nrh;i++) {
-      m[i]=(int *)malloc((unsigned) (nch-ncl+1)*sizeof(int));
-      if (!m[i]) nrerror_vn("allocation failure 2 in imatrix()");
-      m[i] -= ncl;
-   }
-   return m;
-}
-
-double **submatrix_vn(double **a, int oldrl, int oldrh, int oldcl, int oldch, int newrl, int newcl)
-{
-   int i,j;
-   double **m;
-
-   m=(double **) malloc((unsigned) (oldrh-oldrl+1)*sizeof(double*));
-   if (!m) nrerror_vn("allocation failure in submatrix()");
-   m -= newrl;
-
-   for(i=oldrl,j=newrl;i<=oldrh;i++,j++) m[j]=a[i]+oldcl-newcl;
-
-   return m;
-}
-
-void free_vector_vn(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_ivector_vn(int *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_dvector_vn(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
-
-void free_matrix_vn(double **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_dmatrix_vn(double **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_imatrix_vn(int **m, int nrl, int nrh, int ncl, int nch)
-{
-   int i;
-
-   for(i=nrh;i>=nrl;i--) free((char*) (m[i]+ncl));
-   free((char*) (m+nrl));
-}
-
-void free_submatrix_vn(double **b, int nrl, int nrh, int ncl, int nch)
-{
-   free((char*) (b+nrl));
-}
-
-double **convert_matrix_vn(double *a, int nrl, int nrh, int ncl, int nch)
-{
-   int i,j,nrow,ncol;
-   double **m;
-
-   nrow=nrh-nrl+1;
-   ncol=nch-ncl+1;
-   m = (double **) malloc((unsigned) (nrow)*sizeof(double*));
-   if (!m) nrerror_vn("allocation failure in convert_matrix()");
-   m -= nrl;
-   for(i=0,j=nrl;i<=nrow-1;i++,j++) m[j]=a+ncol*i-ncl;
-   return m;
-}
-
-void free_convert_matrix_vn(double **b, int nrl, int nrh, int ncl, int nch)
-{
-   free((char*) (b+nrl));
-}
 
 double qromb_vn(double (*func)(double), double a, double b)
 {
@@ -248,7 +71,7 @@ double qromb_vn(double (*func)(double), double a, double b)
       s[j+1]=s[j];
       h[j+1]=0.25*h[j];
    }
-   nrerror_vn("Too many steps in routine QROMB");
+   pion_nrerror("Too many steps in routine QROMB");
    /*     printf("not accurate\n");*/
    return ss;
 }
@@ -281,8 +104,8 @@ void polint_vn(double xa[], double ya[], int n, double x, double *y, double *dy)
    double *c, *d;
 
    dif=fabs(x-xa[1]);
-   c=vector_vn(1,n);
-   d=vector_vn(1,n);
+   c=pion_vector(1,n);
+   d=pion_vector(1,n);
    for (i=1;i<=n;i++) {
       if ( (dift=fabs(x-xa[i])) < dif) {
          ns=i;
@@ -297,15 +120,15 @@ void polint_vn(double xa[], double ya[], int n, double x, double *y, double *dy)
          ho=xa[i]-x;
          hp=xa[i+m]-x;
          w=c[i+1]-d[i];
-         if ( (den=ho-hp) == 0.0) nrerror_vn("Error in routine POLINT");
+         if ( (den=ho-hp) == 0.0) pion_nrerror("Error in routine POLINT");
          den=w/den;
          d[i]=hp*den;
          c[i]=ho*den;
       }
       *y += (*dy=(2*ns < (n-m) ? c[ns+1] : d[ns--]));
    }
-   free_vector_vn(d,1,n);
-   free_vector_vn(c,1,n);
+   pion_free_vector(d,1,n);
+   pion_free_vector(c,1,n);
 }
 
 void spline_vn(double x[], double y[], int n, double yp1, double ypn, double y2[])
@@ -313,7 +136,7 @@ void spline_vn(double x[], double y[], int n, double yp1, double ypn, double y2[
    int i,k;
    double p, qn, sig, un, *u;
 
-   u=vector_vn(1,n-1);
+   u=pion_vector(1,n-1);
    if (yp1 > 0.99e30)
       y2[1]=u[1]=0.0;
    else {
@@ -336,7 +159,7 @@ void spline_vn(double x[], double y[], int n, double yp1, double ypn, double y2[
    y2[n]=(un-qn*u[n-1])/(qn*y2[n-1]+1.0);
    for (k=n-1;k>=1;k--)
       y2[k]=y2[k]*y2[k+1]+u[k];
-   free_vector_vn(u,1,n-1);
+   pion_free_vector(u,1,n-1);
 }
 
 void splint_vn(double xa[], double ya[], double y2a[], int n, double x, double *y)
@@ -352,7 +175,7 @@ void splint_vn(double xa[], double ya[], double y2a[], int n, double x, double *
       else klo=k;
    }
    h=xa[khi]-xa[klo];
-   if (h == 0.0) nrerror_vn("Bad XA input to routine SPLINT");
+   if (h == 0.0) pion_nrerror("Bad XA input to routine SPLINT");
    a=(xa[khi]-x)/h;
    b=(x-xa[klo])/h;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
@@ -364,9 +187,9 @@ void gaussj_vn(double **a, int n, double **b, int m)
    int i, icol=1, irow=1, j, k, l, ll;
    double big,dum,pivinv;
 
-   indxc=ivector_vn(1,n);
-   indxr=ivector_vn(1,n);
-   ipiv=ivector_vn(1,n);
+   indxc=pion_ivector(1,n);
+   indxr=pion_ivector(1,n);
+   ipiv=pion_ivector(1,n);
    for (j=1;j<=n;j++) ipiv[j]=0;
    for (i=1;i<=n;i++) {
       big=0.0;
@@ -379,7 +202,7 @@ void gaussj_vn(double **a, int n, double **b, int m)
                      irow=j;
                      icol=k;
                   }
-               } else if (ipiv[k] > 1) nrerror_vn("GAUSSJ: Singular Matrix-1");
+               } else if (ipiv[k] > 1) pion_nrerror("GAUSSJ: Singular Matrix-1");
             }
       ++(ipiv[icol]);
       if (irow != icol) {
@@ -388,7 +211,7 @@ void gaussj_vn(double **a, int n, double **b, int m)
       }
       indxr[i]=irow;
       indxc[i]=icol;
-      if (a[icol][icol] == 0.0) nrerror_vn("GAUSSJ: Singular Matrix-2");
+      if (a[icol][icol] == 0.0) pion_nrerror("GAUSSJ: Singular Matrix-2");
       pivinv=1.0/a[icol][icol];
       a[icol][icol]=1.0;
       for (l=1;l<=n;l++) a[icol][l] *= pivinv;
@@ -406,9 +229,9 @@ void gaussj_vn(double **a, int n, double **b, int m)
          for (k=1;k<=n;k++)
             SWAP_vn(a[k][indxr[l]],a[k][indxc[l]]);
    }
-   free_ivector_vn(ipiv,1,n);
-   free_ivector_vn(indxr,1,n);
-   free_ivector_vn(indxc,1,n);
+   pion_free_ivector(ipiv,1,n);
+   pion_free_ivector(indxr,1,n);
+   pion_free_ivector(indxc,1,n);
 }
 
 /* FINISH */
@@ -592,12 +415,12 @@ int vneutral
   sjunk4=malloc(50);
   line=malloc(400);
 
-  Nion=dmatrix_vn(1,28,1,28);
+  Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
 
   DATADIR=FGMSTR(name);
 
-  ABUND=dvector_vn(1,30);
+  ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
   sprintf(temp,"%s/photoion_dat/abundance.dat",DATADIR);
   input=fopen(temp,"r");
@@ -610,7 +433,7 @@ int vneutral
   }
   fclose(input);
 
-  oshe=dvector_vn(1,30);
+  oshe=pion_dvector(1,30);
   sprintf(temp,"%s/photoion_dat/oscillator_he.dat",DATADIR);
   input=fopen(temp,"r");
   while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
@@ -666,26 +489,26 @@ int vneutral
 
   doppler_rad=doppler_vn(v_rad);
 
-  EGRID=dvector_vn(1,GRIDNUM);  
-  PIGRID=dvector_vn(1,GRIDNUM); 
-  PIGRID_2=dvector_vn(1,GRIDNUM);
-  RRGRID=dvector_vn(1,GRIDNUM);  
-  RRGRID_2=dvector_vn(1,GRIDNUM);
+  EGRID=pion_dvector(1,GRIDNUM);  
+  PIGRID=pion_dvector(1,GRIDNUM); 
+  PIGRID_2=pion_dvector(1,GRIDNUM);
+  RRGRID=pion_dvector(1,GRIDNUM);  
+  RRGRID_2=pion_dvector(1,GRIDNUM);
 
-  LOWE_EGRID=dvector_vn(1,LOWE_GRIDNUM);  
-  LOWE_PIGRID=dvector_vn(1,LOWE_GRIDNUM); 
-  LOWE_PIGRID_2=dvector_vn(1,LOWE_GRIDNUM);
-  LOWE_RRGRID=dvector_vn(1,LOWE_GRIDNUM); 
-  LOWE_RRGRID_2=dvector_vn(1,LOWE_GRIDNUM);
+  LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
+  LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
+  LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
+  LOWE_RRGRID=pion_dvector(1,LOWE_GRIDNUM); 
+  LOWE_RRGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
-  E_array=dvector_vn(1,SPECBINS);       /* energy axis */
-  tau=dvector_vn(1,SPECBINS);           /* total opacity in all ions */
-  tau_exc=dvector_vn(1,SPECBINS);        
-  tau_edge=dvector_vn(1,SPECBINS);       
-  ionizsigmatemp=dvector_vn(1,SPECBINS);
-  H_excite=dmatrix_vn(1,28,1,6);
-  He_excite=dmatrix_vn(1,28,1,9);
-  list=ivector_vn(1,ELEMENTS);
+  E_array=pion_dvector(1,SPECBINS);       /* energy axis */
+  tau=pion_dvector(1,SPECBINS);           /* total opacity in all ions */
+  tau_exc=pion_dvector(1,SPECBINS);        
+  tau_edge=pion_dvector(1,SPECBINS);       
+  ionizsigmatemp=pion_dvector(1,SPECBINS);
+  H_excite=pion_dmatrix(1,28,1,6);
+  He_excite=pion_dmatrix(1,28,1,9);
+  list=pion_ivector(1,ELEMENTS);
 
   for (i=1;i<=SPECBINS;++i) {
     tau[i]=0.;
@@ -1197,27 +1020,27 @@ int vneutral
   free(line);
   /*  free(element_name);
       free(ext);*/
-  free_dvector_vn(LOWE_EGRID,1,LOWE_GRIDNUM);  
-  free_dvector_vn(LOWE_PIGRID,1,LOWE_GRIDNUM); 
-  free_dvector_vn(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
-  free_dvector_vn(LOWE_RRGRID,1,LOWE_GRIDNUM); 
-  free_dvector_vn(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
-  free_dvector_vn(ABUND,1,30);
-  free_dvector_vn(oshe,1,30);
-  free_dvector_vn(E_array,1,SPECBINS);       
-  free_dvector_vn(tau,1,SPECBINS);           
-  free_dvector_vn(tau_exc,1,SPECBINS);           
-  free_dvector_vn(tau_edge,1,SPECBINS);           
-  free_dvector_vn(ionizsigmatemp,1,SPECBINS);
-  free_dmatrix_vn(Nion,1,28,1,28);
-  free_dmatrix_vn(H_excite,1,28,1,6);
-  free_dmatrix_vn(He_excite,1,28,1,9);
-  free_ivector_vn(list,1,ELEMENTS);
-  free_dvector_vn(EGRID,1,GRIDNUM);  
-  free_dvector_vn(PIGRID,1,GRIDNUM); 
-  free_dvector_vn(PIGRID_2,1,GRIDNUM);
-  free_dvector_vn(RRGRID,1,GRIDNUM);  
-  free_dvector_vn(RRGRID_2,1,GRIDNUM);
+  pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
+  pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
+  pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
+  pion_free_dvector(LOWE_RRGRID,1,LOWE_GRIDNUM); 
+  pion_free_dvector(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
+  pion_free_dvector(ABUND,1,30);
+  pion_free_dvector(oshe,1,30);
+  pion_free_dvector(E_array,1,SPECBINS);       
+  pion_free_dvector(tau,1,SPECBINS);           
+  pion_free_dvector(tau_exc,1,SPECBINS);           
+  pion_free_dvector(tau_edge,1,SPECBINS);           
+  pion_free_dvector(ionizsigmatemp,1,SPECBINS);
+  pion_free_dmatrix(Nion,1,28,1,28);
+  pion_free_dmatrix(H_excite,1,28,1,6);
+  pion_free_dmatrix(He_excite,1,28,1,9);
+  pion_free_ivector(list,1,ELEMENTS);
+  pion_free_dvector(EGRID,1,GRIDNUM);  
+  pion_free_dvector(PIGRID,1,GRIDNUM); 
+  pion_free_dvector(PIGRID_2,1,GRIDNUM);
+  pion_free_dvector(RRGRID,1,GRIDNUM);  
+  pion_free_dvector(RRGRID_2,1,GRIDNUM);
   if (verbose) printf("...done!\n");
   
   return 0;
@@ -1494,9 +1317,9 @@ double voigt_vn(double alpha,double v)
   double r1,r2;
   double H;
  
-  a=dvector_vn(1,7);
-  b=dvector_vn(1,7);
-  c=dvector_vn(1,7);
+  a=pion_dvector(1,7);
+  b=pion_dvector(1,7);
+  c=pion_dvector(1,7);
 
   a[1]=122.607931777104326;
   a[2]=214.382388694706425;
@@ -1564,9 +1387,9 @@ double voigt_vn(double alpha,double v)
     H = (q1 * q2 + r1 * r2) / (q2 * q2 + r2 * r2);
   }
 
-  free_dvector_vn(a,1,7);
-  free_dvector_vn(b,1,7);
-  free_dvector_vn(c,1,7);
+  pion_free_dvector(a,1,7);
+  pion_free_dvector(b,1,7);
+  pion_free_dvector(c,1,7);
   
   return H;
 }

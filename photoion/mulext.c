@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_alloc.h"
+
 void nrerror_ex(char error_text[]);
 
 int mulext
@@ -36,32 +38,7 @@ have the name "mulext.qdp":
 */  
 
 /* Forward declarations (converted from K&R style). */
-void nrerror_me(char error_text[]);
-double *dvector_me(int nl, int nh);
-void free_dvector_me(double *v, int nl, int nh);
 
-void nrerror_me(char error_text[])
-{
-
-   /*fprintf(stderr,"Numerical Recipes run-time error...\n");
-   fprintf(stderr,"%s\n",error_text);
-   fprintf(stderr,"...now exiting to system...\n");
-   exit(1);*/
-}
-
-double *dvector_me(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_ex("allocation failure in dvector()");
-   return v-nl;
-}
-
-void free_dvector_me(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
 
 int mulext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer)
@@ -89,9 +66,9 @@ int mulext
   while (fgets(line,LENGTH,specfile) != NULL) ++SPECBINS;
   fclose(specfile);
 
-  E_array=dvector_me(1,SPECBINS);
-  E_bin=dvector_me(1,SPECBINS);
-  E_spectrum=dvector_me(1,SPECBINS);
+  E_array=pion_dvector(1,SPECBINS);
+  E_bin=pion_dvector(1,SPECBINS);
+  E_spectrum=pion_dvector(1,SPECBINS);
 
   specfile=fopen("mulext.qdp","r");
   j=1;
@@ -155,9 +132,9 @@ int mulext
     }
   }
 
-  free_dvector_me(E_array,1,SPECBINS);
-  free_dvector_me(E_bin,1,SPECBINS);
-  free_dvector_me(E_spectrum,1,SPECBINS);
+  pion_free_dvector(E_array,1,SPECBINS);
+  pion_free_dvector(E_bin,1,SPECBINS);
+  pion_free_dvector(E_spectrum,1,SPECBINS);
 
   return 0;
 }

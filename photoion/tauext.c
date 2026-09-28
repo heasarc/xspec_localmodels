@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_alloc.h"
+
 int tauext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
 
@@ -34,32 +36,7 @@ have the name "tauext.qdp":
 */  
 
 /* Forward declarations (converted from K&R style). */
-void nrerror_te(char error_text[]);
-double *dvector_te(int nl, int nh);
-void free_dvector_te(double *v, int nl, int nh);
 
-void nrerror_te(char error_text[])
-{
-
-   /*fprintf(stderr,"Numerical Recipes run-time error...\n");
-   fprintf(stderr,"%s\n",error_text);
-   fprintf(stderr,"...now exiting to system...\n");
-   exit(1);*/
-}
-
-double *dvector_te(int nl, int nh)
-{
-   double *v;
-
-   v=(double *)malloc((unsigned) (nh-nl+1)*sizeof(double));
-   if (!v) nrerror_te("allocation failure in dvector()");
-   return v-nl;
-}
-
-void free_dvector_te(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
-}
 
 int tauext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer)
@@ -88,9 +65,9 @@ int tauext
   while (fgets(line,LENGTH,specfile) != NULL) ++SPECBINS;
   fclose(specfile);
 
-  E_array=dvector_te(1,SPECBINS);
-  E_bin=dvector_te(1,SPECBINS);
-  E_spectrum=dvector_te(1,SPECBINS);
+  E_array=pion_dvector(1,SPECBINS);
+  E_bin=pion_dvector(1,SPECBINS);
+  E_spectrum=pion_dvector(1,SPECBINS);
 
   specfile=fopen("tauext.qdp","r");
   j=1;
@@ -154,9 +131,9 @@ int tauext
     }
   }
 
-  free_dvector_te(E_array,1,SPECBINS);
-  free_dvector_te(E_bin,1,SPECBINS);
-  free_dvector_te(E_spectrum,1,SPECBINS);
+  pion_free_dvector(E_array,1,SPECBINS);
+  pion_free_dvector(E_bin,1,SPECBINS);
+  pion_free_dvector(E_spectrum,1,SPECBINS);
 
   return 0;
 }
