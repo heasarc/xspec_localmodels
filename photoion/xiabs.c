@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_num.h"
+
 #include "photoion_nr_alloc.h"
 
 int xiabs
@@ -46,193 +48,7 @@ FCALLSCSUB6(xiabs,XIABS,xiabs,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 /* START */
 
 /* Forward declarations (converted from K&R style). */
-double qromb_xi(double (*func)(double), double a, double b);
-double trapzd_xi(double (*func)(double), double a, double b, int n);
-void polint_xi(double xa[], double ya[], int n, double x, double *y, double *dy);
-void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[]);
-void splint_xi(double xa[], double ya[], double y2a[], int n, double x, double *y);
-void gaussj_xi(double **a, int n, double **b, int m);
 
-
-double qromb_xi(double (*func)(double), double a, double b)
-{
-   double ss, dss;
-   double s[JMAXP+1],h[JMAXP+1];
-   int j;
-
-   h[1]=1.0;
-   for (j=1;j<=JMAX;j++) {
-      s[j]=trapzd_xi(func,a,b,j);
-      if (j >= K) {
-         polint_xi(&h[j-K],&s[j-K],K,0.0,&ss,&dss);
-         if (fabs(dss) < EPS*fabs(ss)) return ss;
-      }
-      /*printf("%2d     %e\n",j,ss);*/
-      s[j+1]=s[j];
-      h[j+1]=0.25*h[j];
-   }
-   pion_nrerror("Too many steps in routine QROMB");
-   /*     printf("not accurate\n");*/
-   return ss;
-}
-
-double trapzd_xi(double (*func)(double), double a, double b, int n)
-{
-   double x,tnm,sum,del;
-   static double s;
-   static int it;
-   int j;
-
-   if (n == 1) {
-      it=1;
-      return (s=0.5*(b-a)*(FUNC_xi(a)+FUNC_xi(b)));
-   } else {
-      tnm=it;
-      del=(b-a)/tnm;
-      x=a+0.5*del;
-      for (sum=0.0,j=1;j<=it;j++,x+=del) sum += FUNC_xi(x);
-      it *= 2;
-      s=0.5*(s+(b-a)*sum/tnm);
-      return s;
-   }
-}
-
-void polint_xi(double xa[], double ya[], int n, double x, double *y, double *dy)
-{
-   int i,m,ns=1;
-   double den,dif,dift,ho,hp,w;
-   double *c, *d;
-
-   dif=fabs(x-xa[1]);
-   c=pion_vector(1,n);
-   d=pion_vector(1,n);
-   for (i=1;i<=n;i++) {
-      if ( (dift=fabs(x-xa[i])) < dif) {
-         ns=i;
-         dif=dift;
-      }
-      c[i]=ya[i];
-      d[i]=ya[i];
-   }
-   *y=ya[ns--];
-   for (m=1;m<n;m++) {
-      for (i=1;i<=n-m;i++) {
-         ho=xa[i]-x;
-         hp=xa[i+m]-x;
-         w=c[i+1]-d[i];
-         if ( (den=ho-hp) == 0.0) pion_nrerror("Error in routine POLINT");
-         den=w/den;
-         d[i]=hp*den;
-         c[i]=ho*den;
-      }
-      *y += (*dy=(2*ns < (n-m) ? c[ns+1] : d[ns--]));
-   }
-   pion_free_vector(d,1,n);
-   pion_free_vector(c,1,n);
-}
-
-void spline_xi(double x[], double y[], int n, double yp1, double ypn, double y2[])
-{
-   int i,k;
-   double p, qn, sig, un, *u;
-
-   u=pion_vector(1,n-1);
-   if (yp1 > 0.99e30)
-      y2[1]=u[1]=0.0;
-   else {
-      y2[1] = -0.5;
-      u[1]=(3.0/(x[2]-x[1]))*((y[2]-y[1])/(x[2]-x[1])-yp1);
-   }
-   for (i=2;i<=n-1;i++) {
-      sig=(x[i]-x[i-1])/(x[i+1]-x[i-1]);
-      p=sig*y2[i-1]+2.0;
-      y2[i]=(sig-1.0)/p;
-      u[i]=(y[i+1]-y[i])/(x[i+1]-x[i]) - (y[i]-y[i-1])/(x[i]-x[i-1]);
-      u[i]=(6.0*u[i]/(x[i+1]-x[i-1])-sig*u[i-1])/p;
-   }
-   if (ypn > 0.99e30)
-      qn=un=0.0;
-   else {
-      qn=0.5;
-      un=(3.0/(x[n]-x[n-1]))*(ypn-(y[n]-y[n-1])/(x[n]-x[n-1]));
-   }
-   y2[n]=(un-qn*u[n-1])/(qn*y2[n-1]+1.0);
-   for (k=n-1;k>=1;k--)
-      y2[k]=y2[k]*y2[k+1]+u[k];
-   pion_free_vector(u,1,n-1);
-}
-
-void splint_xi(double xa[], double ya[], double y2a[], int n, double x, double *y)
-{
-   int klo,khi,k;
-   double h,b,a;
-
-   klo=1;
-   khi=n;
-   while (khi-klo > 1) {
-      k=(khi+klo) >> 1;
-      if (xa[k] > x) khi=k;
-      else klo=k;
-   }
-   h=xa[khi]-xa[klo];
-   if (h == 0.0) pion_nrerror("Bad XA input to routine SPLINT");
-   a=(xa[khi]-x)/h;
-   b=(x-xa[klo])/h;
-   *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
-}
-
-void gaussj_xi(double **a, int n, double **b, int m)
-{
-   int *indxc,*indxr,*ipiv;
-   int i, icol=1, irow=1, j, k, l, ll;
-   double big,dum,pivinv;
-
-   indxc=pion_ivector(1,n);
-   indxr=pion_ivector(1,n);
-   ipiv=pion_ivector(1,n);
-   for (j=1;j<=n;j++) ipiv[j]=0;
-   for (i=1;i<=n;i++) {
-      big=0.0;
-      for (j=1;j<=n;j++)
-         if (ipiv[j] != 1)
-            for (k=1;k<=n;k++) {
-               if (ipiv[k] == 0) {
-                  if (fabs(a[j][k]) >= big) {
-                     big=fabs(a[j][k]);
-                     irow=j;
-                     icol=k;
-                  }
-               } else if (ipiv[k] > 1) pion_nrerror("GAUSSJ: Singular Matrix-1");
-            }
-      ++(ipiv[icol]);
-      if (irow != icol) {
-         for (l=1;l<=n;l++) SWAP_xi(a[irow][l],a[icol][l])
-         for (l=1;l<=m;l++) SWAP_xi(b[irow][l],b[icol][l])
-      }
-      indxr[i]=irow;
-      indxc[i]=icol;
-      if (a[icol][icol] == 0.0) pion_nrerror("GAUSSJ: Singular Matrix-2");
-      pivinv=1.0/a[icol][icol];
-      a[icol][icol]=1.0;
-      for (l=1;l<=n;l++) a[icol][l] *= pivinv;
-      for (l=1;l<=m;l++) b[icol][l] *= pivinv;
-      for (ll=1;ll<=n;ll++)
-         if (ll != icol) {
-            dum=a[ll][icol];
-            a[ll][icol]=0.0;
-            for (l=1;l<=n;l++) a[ll][l] -= a[icol][l]*dum;
-            for (l=1;l<=m;l++) b[ll][l] -= b[icol][l]*dum;
-         }
-   }
-   for (l=n;l>=1;l--) {
-      if (indxr[l] != indxc[l])
-         for (k=1;k<=n;k++)
-            SWAP_xi(a[k][indxr[l]],a[k][indxc[l]]);
-   }
-   pion_free_ivector(ipiv,1,n);
-   pion_free_ivector(indxr,1,n);
-   pion_free_ivector(indxc,1,n);
-}
 
 /* FINISH */
 
@@ -518,14 +334,14 @@ int xiabs
   HNORM=0.;
   for (k=1;k<=element+1;++k) {
     for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
-    spline_xi(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+    pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
     for (i=1;i<=XINUM;++i) fion_array[i]=frac_xi(xi_array[i])*fion_xi(xi_array[i]);
-    spline_xi(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+    pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
 
     electron=element-k+1;
-    if (electron>=1) Nion[element][electron]=qromb_xi(fion_integrand_xi,XIMIN,XIMAX);
-    if (electron==0) N_e+=qromb_xi(fion_integrand_xi,XIMIN,XIMAX);
-    HNORM+=qromb_xi(fion_integrand_xi,XIMIN,XIMAX);
+    if (electron>=1) Nion[element][electron]=pion_qromb(fion_integrand_xi,XIMIN,XIMAX);
+    if (electron==0) N_e+=pion_qromb(fion_integrand_xi,XIMIN,XIMAX);
+    HNORM+=pion_qromb(fion_integrand_xi,XIMIN,XIMAX);
   }
   Nion[1][1]=Nion[1][1]*N_H/HNORM;
   N_e=N_e*N_H/HNORM;
@@ -547,7 +363,7 @@ int xiabs
     for (k=1;k<=element+1;++k) {
       fion_integrate=0;
       for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
-      spline_xi(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+      pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
 	/*      printf("%e  %e  %e  %e\n",xi_fion_grid[i],frac_xi(xi_fion_grid[i]),fion_grid[i],ion[k][i]);*/
       
       fion_integrate=0;
@@ -556,13 +372,13 @@ int xiabs
 	if (fion_array[i]!=0.) fion_integrate=1;
       }
       if (fion_integrate) {
-	spline_xi(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+	pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
 	electron=element-k+1;
 	if (electron>=1) {
-	  Nion[element][electron]=ABUND[element]*N_H/HNORM*qromb_xi(fion_integrand_xi,XIMIN,XIMAX);
+	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_qromb(fion_integrand_xi,XIMIN,XIMAX);
 	}
 	if (electron>=1) N_e+=((double) (element-electron))*Nion[element][electron];
-	else N_e+=((double) (element-electron))*ABUND[element]*N_H/HNORM*qromb_xi(fion_integrand_xi,XIMIN,XIMAX);
+	else N_e+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_qromb(fion_integrand_xi,XIMIN,XIMAX);
       }
     }
   }
@@ -866,7 +682,7 @@ int xiabs
 	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
-	  spline_xi(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
+	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
 	  if (Nion[element][electron]*pisigma_xi(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
@@ -875,7 +691,7 @@ int xiabs
 	      else PIGRID[k]=pisigma_xi(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    spline_xi(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
+	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
 	    fac_edge_opacity_xi(Nion[element][electron],THRESHOLD,tau_edge);
@@ -938,7 +754,7 @@ int xiabs
 	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
-	  spline_xi(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
+	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
 	  if (Nion[element][electron]*pisigma_xi(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
@@ -947,7 +763,7 @@ int xiabs
 	      else PIGRID[k]=pisigma_xi(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    spline_xi(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
+	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
 	    fac_edge_opacity_xi(Nion[element][electron],THRESHOLD,tau_edge);
@@ -1035,7 +851,7 @@ int xiabs
 	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
-	  spline_xi(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
+	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
 	  if (Nion[element][electron]*pisigma_xi(g_i,p0,p1,p2,p3,1.01*THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
@@ -1044,7 +860,7 @@ int xiabs
 	      else PIGRID[k]=pisigma_xi(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    spline_xi(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
+	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
 	    fac_edge_opacity_xi(Nion[element][electron],THRESHOLD,tau_edge);
@@ -1197,7 +1013,7 @@ double fion_xi(double xi)
 {
   double answer;
   
-  splint_xi(xi_fion_grid,fion_grid,fion_grid_2,FIONXINUM,xi,&answer);
+  pion_splint(xi_fion_grid,fion_grid,fion_grid_2,FIONXINUM,xi,&answer);
   return answer;
 }
 
@@ -1206,7 +1022,7 @@ double fion_integrand_xi(double temp)
 {
   double answer;
 
-  splint_xi(xi_array,fion_array,fion_array_2,XINUM,temp,&answer);
+  pion_splint(xi_array,fion_array,fion_array_2,XINUM,temp,&answer);
   return answer;
 }
 
@@ -1265,7 +1081,7 @@ double pispline_xi(double E)
   double answer;
   
   E=log10(E);
-  splint_xi(EGRID,PIGRID,PIGRID_2,GRIDNUM,E,&answer);
+  pion_splint(EGRID,PIGRID,PIGRID_2,GRIDNUM,E,&answer);
   return pow(10.,answer);
 }
 
@@ -1274,7 +1090,7 @@ double lowEpispline_xi(double E)
   double answer;
   
   E=log10(E);
-  splint_xi(LOWE_EGRID,LOWE_PIGRID,LOWE_PIGRID_2,LOWE_GRIDNUM,E,&answer);
+  pion_splint(LOWE_EGRID,LOWE_PIGRID,LOWE_PIGRID_2,LOWE_GRIDNUM,E,&answer);
   return pow(10.,answer);
 }
 

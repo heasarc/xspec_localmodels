@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_nr_num.h"
+
 #include "photoion_nr_alloc.h"
 
 int tauext
