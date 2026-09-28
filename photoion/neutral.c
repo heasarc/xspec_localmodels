@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photoion_nr_num.h"
+#include "photoion_state.h"
 
 #include "photoion_nr_alloc.h"
 
@@ -77,26 +78,6 @@ struct VERNER_PARTIAL_STRUCT {
   double yw;
 };
 
-static double *E_array;
-
-static double *EGRID,*PIGRID,*PIGRID_2,*RRGRID,*RRGRID_2,THRESHOLD,ANGULAR;
-static int GRIDNUM=20000;
-
-static double *LOWE_EGRID,*LOWE_PIGRID,*LOWE_PIGRID_2,*LOWE_RRGRID,*LOWE_RRGRID_2;
-static int LOWE_GRIDNUM=6;
-
-static double EBIN,EMIN,EMAX; /* range of spectrum in [eV] */
-
-static double voigt_lim; /* Voigt function parameter */
-static double tau_lim; /* Voigt function opacity limit */
-
-static double doppler_rad;
-
-static double *ionizsigmatemp,*tau_exc,*tau_edge,*tau;
-
-static int SPECBINS;
-
-/* XSPEC subroutines */
 char* FGMSTR(char* name);
 
 /* Subroutines from PHOTOION */

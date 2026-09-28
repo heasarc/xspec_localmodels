@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photoion_nr_num.h"
+#include "photoion_state.h"
 
 #include "photoion_nr_alloc.h"
 
@@ -77,42 +78,6 @@ struct VERNER_PARTIAL_STRUCT {
 };
 
 
-static double L_X,L_EMAX,L_EMIN,LNORM,LinterpNORM,GAMMA,f_COVERING,D,kT,sigmav_rad,sigmav_trans,v_rad,v_trans;
-static double *EGRID,*PIGRID,*PIGRID_2,*RRGRID,*RRGRID_2,ELECTRON_ENERGY,THRESHOLD,ANGULAR;
-static int GRIDNUM=20000,RECNUM=10;
-
-static double *LOWE_EGRID,*LOWE_PIGRID,*LOWE_PIGRID_2,*LOWE_RRGRID,*LOWE_RRGRID_2;
-static int LOWE_GRIDNUM=6;
-
-static double *E_array,*E_spectrum,*abs_spectrum,*exc_spectrum,*rec_spectrum;
-static double *l_array,*l_spectrum;
-static double *int_array,*int_array_2;
-static double *Tvec,*Yvec,*Yvec2;
-static double *z_array,*hubble_array,*hubble_array_2;
-static int HUBBLE_BINS=100000;
-
-static double EBIN,EMIN,EMAX; /* range of spectrum in [eV] */
-
-static double voigt_lim; /* Voigt function parameter */
-static double tau_lim; /* Voigt function opacity limit */
-static double pi_rate_lim; /* Voigt function opacity limit */
-
-static int INPUT, INPUT_SIZE, INPUT_SHIFT;
-static double *E_input,*L_input,*L_input_2,*EtimesL_input,*EtimesL_input_2;
-static double HALFBIN_SIZE;
-
-static double N_e,**Nion,**Tion,**EMion,**EM;
-
-static double doppler_rad,doppler_trans;
-
-static double **Hionizsigmaconv,**Heionizsigmaconv,*ionizsigmatemp,*spectrumtemp,*tau,*tau_exc,*tau_edge;
-
-static double *RR_line,*RR_line_2,*DR_line,*DR_line_2,*L_kT;
-static double *L_RR,*L_RR_2,*L_DR,*L_DR_2,*L_REC,*L_REC_2;
-static double L_RR_kT,L_DR_kT,L_REC_kT;
-static int SPECBINS;
-
-/* XSPEC subroutines */
 char* FGMSTR(char* name);
 
 /* PHOTOION Subroutines */
