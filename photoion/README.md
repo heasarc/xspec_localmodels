@@ -5,10 +5,25 @@ example of their use in the analysis of an XMM-Newton observation of
 MCG -6-30-15 is given in <a href="mcg.ps">this unpublished paper</a>.
 <p>
 
-The data files in photoion_dat should be placed in their own directory which will 
-then be specified within XSPEC using the command "xset PHOTOION_DIR
-directory-name" where directory-name is the directory in which the
-data files were placed.
+The photoion_dat directory holds the atomic data files. Its location is
+specified within XSPEC using the command "xset PHOTOION_DIR
+directory-name", where directory-name is the directory <i>containing</i>
+photoion_dat &mdash; not photoion_dat itself. The models append
+"/photoion_dat/" to this value internally, so if photoion_dat lives in
+/path/to/photoion, then set
+<pre>
+  xset PHOTOION_DIR /path/to/photoion
+</pre>
+and the models will read /path/to/photoion/photoion_dat/abundance.dat,
+and so on. Pointing PHOTOION_DIR directly at photoion_dat instead
+produces errors of the form "NEUTRAL: Failed to open
+.../photoion_dat/photoion_dat/abundance.dat".
+<p>
+
+Note that the internal buffer holding these constructed filenames is
+fixed at 130 characters, so a long PHOTOION_DIR path (on the order of
+100 characters or more) will overflow it and abort XSPEC. Keep the path
+short until this is fixed.
 <p>
 
 
