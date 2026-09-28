@@ -1113,6 +1113,10 @@ int phsi
   tau=dvector_ps(1,SPECBINS);           /* total opacity in all ions */
   tau_edge=dvector_ps(1,SPECBINS);           /* total opacity in all ions */
   tau_exc=dvector_ps(1,SPECBINS);           /* total opacity in all ions */
+  /* Zero the opacity arrays: dvector_ps() uses malloc, and every opacity
+     routine accumulates onto these with +=, so stale values from a previous
+     model evaluation would otherwise carry over. */
+  for (k=1;k<=SPECBINS;++k) {tau[k]=0.; tau_edge[k]=0.; tau_exc[k]=0.;}
   Labsorb=dvector_ps(1,SPECBINS);    
   int_array=dvector_ps(1,SPECBINS);  
   int_array_2=dvector_ps(1,SPECBINS); 
