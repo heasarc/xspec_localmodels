@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "photoion_phys.h"
+
 #include "photoion_nr_num.h"
 #include "photoion_state.h"
 
@@ -53,84 +55,16 @@ FCALLSCSUB6(phsi,PHSI,phsi,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 /* FINISH */
 
 
-struct VERNER_STRUCT {
-  double Eth;
-  double Emax;
-  double Ezero;
-  double s0;
-  double ya;
-  double P;
-  double yw;
-  double y0;
-  double y1;
-};
-
-struct VERNER_PARTIAL_STRUCT {
-  int electron;
-  int principal;
-  int angular;
-  double Eth;
-  double Ezero;
-  double s0;
-  double ya;
-  double P;
-  double yw;
-};
-
-
 char* FGMSTR(char* name);
 
 /* PHSI Subroutines */
-double dfdE_ps(double g_i, double p0, double p1, double p2, double p3, double E);
-double pisigma_ps(double g_i, double p0, double p1, double p2, double p3, double E);
-double pispline_ps(double E);
-double lowEpispline_ps(double E);
-double vernerph_ps(struct VERNER_STRUCT verner, double E); /* verner photoionization sigma */
-double vernerpartialph_ps(struct VERNER_PARTIAL_STRUCT verner, double E); /* verner partial photoionization sigma */
-double excitsigma_ps(double E0, double OSCILLATOR,double DELTANUD,double ALPHA, double E);
-double gauss_ps(double s,double x);   /* norm. gaussian: 1/sqrt(2*PI)/s e^(-x^2/2*s^2) */
-double doppler_ps(double v /*[km/s]*/);
-double voigt_ps(double ALPHA,double v);
 
-double fac_ionizsigma_ps(double THRESHOLD, double E);
 void line_limits_ps(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi);
 void line_opacity_ps(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[]);
-void HeI_edge_opacity_ps(double Nion_column_density,double THRESHOLD,double tau_edge_p[]);
-void fac_edge_opacity_ps(double Nion_column_density, double THRESHOLD, double tau_edge_p[]) ;
-void verner_full_edge_opacity_ps(double Nion_column_density,double THRESHOLD,struct VERNER_STRUCT verner,double tau_edge_p[]);
-void verner_partial_edge_opacity_ps(double Nion_column_density,double THRESHOLD,struct VERNER_PARTIAL_STRUCT verner,double tau_edge_p[]);
+void pion_fac_edge_opacity(double Nion_column_density, double THRESHOLD, double tau_edge_p[]) ;
 
-double rrsigma_ps(double g_i, double g_j, double p0, double p1, double p2, double p3, double E);
-double rrspline_ps(double E);
-double lowEpispline_ps(double E);
-double lowErrspline_ps(double E);
-double L_ps(double E);     /* nuclear power-law continuum */
-double Linterp_ps(double E);
-double EtimesL_ps(double E);
-double RR_line_spline_ps(double temp);
-double DR_line_spline_ps(double temp);
 double REC_spline_ps(double temp);
-double L_RR_spline_ps(double temp);
-double L_DR_spline_ps(double temp);
-double L_REC_spline_ps(double temp);
-double integrand_ps(double temp);
-double vernerph_ps(struct VERNER_STRUCT verner, double E); /* verner photoionization sigma */
-double vernerpartialph_ps(struct VERNER_PARTIAL_STRUCT verner, double E); /* verner partial photoionization sigma */
-double excitsigma_ps(double E0, double OSCILLATOR,double DELTANUD,double ALPHA, double E);
-double maxwell_ps(double Te, double kT, double NORM);
-double verner_recombination_ps(struct VERNER_STRUCT vioniz, double kT, double E);
-double fac_recombination_ps(double g_i,double g_j,double p0,double p1,double p2,double p3,double kT, double Te);
-double loglinestrength_ps(double logkT);
-double gauss_ps(double s,double x);   /* norm. gaussian: 1/sqrt(2*PI)/s e^(-x^2/2*s^2) */
-double doppler_ps(double v /*[km/s]*/);
 
-double hubble_integrand_ps(double z);
-double hubble_integrate_ps(double z);
-
-double fac_PI_rate_integral_ps(double THRESHOLD,double Labsorb[]);
-double voigt_ps(double alpha, double v);
-
-double HeI_edge_ps(double E);
 
 int phsi
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer)
@@ -650,10 +584,10 @@ int phsi
       hubble_array_2=pion_dvector(1,HUBBLE_BINS);
       for (k=1;k<=HUBBLE_BINS;++k) {
 	z_array[k]=((double) k-1.)/((double) HUBBLE_BINS-1.)*redshift;
-	hubble_array[k]=hubble_integrand_ps(z_array[k]);
+	hubble_array[k]=pion_hubble_integrand(z_array[k]);
       }
       pion_spline(z_array,hubble_array,HUBBLE_BINS,1.e40,1.e40,hubble_array_2);
-      D=pion_qromb(hubble_integrate_ps,0.,redshift); /* if D=0, use Hubble law */
+      D=pion_qromb(pion_hubble_integrate,0.,redshift); /* if D=0, use Hubble law */
       if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=71 km/s/Mpc, Omega_m=0.27, Omega_lambda=0.73)\n",redshift,D/parsectocm/1.e6);
       pion_free_dvector(z_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array,1,HUBBLE_BINS);
@@ -664,8 +598,8 @@ int phsi
     }
   }
 
-  doppler_rad=doppler_ps(v_rad);
-  doppler_trans=doppler_ps(v_trans);
+  doppler_rad=pion_doppler(v_rad);
+  doppler_trans=pion_doppler(v_trans);
 
   EGRID=pion_dvector(1,GRIDNUM);  
   PIGRID=pion_dvector(1,GRIDNUM); 
@@ -819,10 +753,10 @@ int phsi
       if (Nion[element][electron]) {
 	if (element==2 && electron==2) {
 	  THRESHOLD=24.58;
-	  HeI_edge_opacity_ps(Nion[element][electron],THRESHOLD,tau_edge);
+	  pion_HeI_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
 	} else {
 	  THRESHOLD=vernerionizsigma[element][electron].Eth;
-	  verner_full_edge_opacity_ps(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_edge);
+	  pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_edge);
 	}
       }
     }
@@ -835,7 +769,7 @@ int phsi
 	for (j=0;j<=PARTIAL_NUM;++j) {
 	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=2) {
 	    THRESHOLD=partialsigma[element][j].Eth;
-	    verner_partial_edge_opacity_ps(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
   	  }
 	}
       }
@@ -849,7 +783,7 @@ int phsi
 	for (j=0;j<=PARTIAL_NUM;++j) {
 	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=3) {
 	    THRESHOLD=partialsigma[element][j].Eth;
-	    verner_partial_edge_opacity_ps(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
   	  }
 	}
       }
@@ -971,18 +905,18 @@ int phsi
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
 	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pisigma_ps(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
+	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
 	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=lowEpispline_ps(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pisigma_ps(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
 	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    fac_edge_opacity_ps(Nion[element][electron],THRESHOLD,tau_edge);
+	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
 	  }
 	}
 	fclose(input);
@@ -1039,18 +973,18 @@ int phsi
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
 	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pisigma_ps(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
+	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
 	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=lowEpispline_ps(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pisigma_ps(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
 	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    fac_edge_opacity_ps(Nion[element][electron],THRESHOLD,tau_edge);
+	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
 	  }
 	}
 	fclose(input);
@@ -1135,18 +1069,18 @@ int phsi
 	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
 	  }
 	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pisigma_ps(g_i,p0,p1,p2,p3,1.01*THRESHOLD) >= tau_lim) {
+	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,1.01*THRESHOLD) >= tau_lim) {
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    for (k=1;k<=GRIDNUM;++k) {
 	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=lowEpispline_ps(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pisigma_ps(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	    }
 	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
 	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	    
 	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    fac_edge_opacity_ps(Nion[element][electron],THRESHOLD,tau_edge);
+	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
 	  }
 	}
 	fclose(input);
@@ -1165,7 +1099,7 @@ int phsi
       if (jlow<1) jlow=1;
       if (jhigh>SPECBINS) jhigh=SPECBINS;
       for (n=jlow;n<=jhigh;++n) {
-	djunk=EBIN/(E_array[k])*gauss_ps(sigmav_rad/ccc,(E_array[n]-E_array[k])/E_array[k])*tau_edge[n];
+	djunk=EBIN/(E_array[k])*pion_gauss(sigmav_rad/ccc,(E_array[n]-E_array[k])/E_array[k])*tau_edge[n];
 	tau[k]+=djunk;
       }
     }
@@ -1192,35 +1126,35 @@ int phsi
     /* Normalize intrinsic power law */
     if (GAMMA != 2.) LNORM=L_X*ergstoeV*(2.-GAMMA)/(pow(L_EMAX,2.-GAMMA)-pow(L_EMIN,2.-GAMMA)); 
     else LNORM=L_X*ergstoeV/log(L_EMAX/L_EMIN);
-    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=L_ps(E_array[k])*exp(-tau[k]);
+    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=pion_L(E_array[k])*exp(-tau[k]);
     if (type==4) { /* Filled cone - rec. cont. (lower limit) */
       for (k=1;k<=SPECBINS;++k)	{
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=L_ps(E_array[k])*exp(-tau[k]);
-	  abs_spectrum[k]=L_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_L(E_array[k])*exp(-tau[k]);
+	  abs_spectrum[k]=pion_L(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=L_ps(E_array[k]);
-	  abs_spectrum[k]=L_ps(E_array[k]);
+	  Labsorb[k]=pion_L(E_array[k]);
+	  abs_spectrum[k]=pion_L(E_array[k]);
 	}
       }
     } else if (type==5) { /* Filled cone - rec. cont. (upper limit) */
       for (k=1;k<=SPECBINS;++k) {
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=L_ps(E_array[k]);
-	  abs_spectrum[k]=L_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_L(E_array[k]);
+	  abs_spectrum[k]=pion_L(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=L_ps(E_array[k]);
-	  abs_spectrum[k]=L_ps(E_array[k]);
+	  Labsorb[k]=pion_L(E_array[k]);
+	  abs_spectrum[k]=pion_L(E_array[k]);
 	}
       }
     } else {
       for (k=1;k<=SPECBINS;++k) {
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=L_ps(E_array[k])*(1.-exp(-tau[k]))/tau[k];
-	  abs_spectrum[k]=L_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_L(E_array[k])*(1.-exp(-tau[k]))/tau[k];
+	  abs_spectrum[k]=pion_L(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=L_ps(E_array[k]);
-	  abs_spectrum[k]=L_ps(E_array[k]);
+	  Labsorb[k]=pion_L(E_array[k]);
+	  abs_spectrum[k]=pion_L(E_array[k]);
 	}
       }
     }
@@ -1259,40 +1193,40 @@ int phsi
     pion_spline(E_input,EtimesL_input,INPUT_SIZE,1.e40,1.e40,EtimesL_input_2);
     LinterpNORM=1.;
     if (L_X>0.) {
-      djunk=pion_qromb(EtimesL_ps,1.001*L_EMIN,0.999*L_EMAX);
+      djunk=pion_qromb(pion_EtimesL,1.001*L_EMIN,0.999*L_EMAX);
       LinterpNORM=L_X*ergstoeV/djunk;
       if (verbose) printf("LinterpNORM = %e\n",LinterpNORM);
     }
     pion_spline(E_input,L_input,INPUT_SIZE,1.e40,1.e40,L_input_2);
-    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=Linterp_ps(E_array[k])*exp(-tau[k]);
+    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
     if (type==4) { /* Filled cone - rec. cont. (lower limit) */
       for (k=1;k<=SPECBINS;++k)	{
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=Linterp_ps(E_array[k])*exp(-tau[k]);
-	  abs_spectrum[k]=Linterp_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
+	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=Linterp_ps(E_array[k]);
-	  abs_spectrum[k]=Linterp_ps(E_array[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k]);
+	  abs_spectrum[k]=pion_Linterp(E_array[k]);
 	}
       }
     } else if (type==5) { /* Filled cone - rec. cont. (upper limit) */
       for (k=1;k<=SPECBINS;++k) {
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=Linterp_ps(E_array[k]);
-	  abs_spectrum[k]=Linterp_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k]);
+	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=Linterp_ps(E_array[k]);
-	  abs_spectrum[k]=Linterp_ps(E_array[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k]);
+	  abs_spectrum[k]=pion_Linterp(E_array[k]);
 	}
       }
     } else {
       for (k=1;k<=SPECBINS;++k) {
 	if (tau[k]>1.e-5) {
-	  Labsorb[k]=Linterp_ps(E_array[k])*(1.-exp(-tau[k]))/tau[k];
-	  abs_spectrum[k]=Linterp_ps(E_array[k])*exp(-tau[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k])*(1.-exp(-tau[k]))/tau[k];
+	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
 	} else {
-	  Labsorb[k]=Linterp_ps(E_array[k]);
-	  abs_spectrum[k]=Linterp_ps(E_array[k]);
+	  Labsorb[k]=pion_Linterp(E_array[k]);
+	  abs_spectrum[k]=pion_Linterp(E_array[k]);
 	}
       }
     }
@@ -1320,11 +1254,11 @@ int phsi
 	      line_limits_ps(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi);
 	      int_junk=0.;
 	      for (k=SUMlo;k<=SUMhi;++k) {
-		int_array[k]=excitsigma_ps(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
+		int_array[k]=pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
 		int_junk+=EBIN*int_array[k];
 	      }
 	      /*	    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			    int_ans=pion_qromb(integrand_ps,1.001*Elo,0.999*Ehi);*/
+			    int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      H_excite[element][LINE]=f_COVERING*Nion[element][electron]*int_ans;
 	      if (H_excite[element][LINE]<0.) H_excite[element][LINE]=f_COVERING*Nion[element][electron]*ratePE;
@@ -1355,11 +1289,11 @@ int phsi
 	      line_limits_ps(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi);
 	      int_junk=0.;
 	      for (k=SUMlo;k<=SUMhi;++k) {
-		int_array[k]=excitsigma_ps(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
+		int_array[k]=pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
 		int_junk+=EBIN*int_array[k];
 	      }
 	      /*	    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			    int_ans=pion_qromb(integrand_ps,1.001*Elo,0.999*Ehi);*/
+			    int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      He_excite[element][LINE]=f_COVERING*Nion[element][electron]*int_ans;
 	      /* Add line to Seyfert 2 spectrum */
@@ -1394,11 +1328,11 @@ int phsi
 		line_limits_ps(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi);
 		int_junk=0.;
 		for (k=SUMlo;k<=SUMhi;++k) {
-		  int_array[k]=excitsigma_ps(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
+		  int_array[k]=pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
 		  int_junk+=EBIN*int_array[k];
 		}
 		/*	      pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			      int_ans=pion_qromb(integrand_ps,1.001*Elo,0.999*Ehi);*/
+			      int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
 		if (1 || int_ans<0.) int_ans=int_junk;
 		strength=f_COVERING*Nion[element][electron]*int_ans;
 		/* add line to seyfert 2 like spectrum */
@@ -1458,9 +1392,9 @@ int phsi
 	  pion_spline(L_kT,L_REC,RECNUM,1.e40,1.e40,L_REC_2);
 	  
 	  kT=Tion[element][electron];
-	  L_RR_kT=L_RR_spline_ps(kT);
-	  L_DR_kT=L_DR_spline_ps(kT);
-	  L_REC_kT=L_REC_spline_ps(kT);
+	  L_RR_kT=pion_L_RR_spline(kT);
+	  L_DR_kT=pion_L_DR_spline(kT);
+	  L_REC_kT=pion_L_REC_spline(kT);
 	  
 	  if (verbose) printf("PE rates %2d %2d ...\n",element,electron);
 	  sprintf(root,"%s/photoion_dat/L_shell/",DATADIR);
@@ -1488,11 +1422,11 @@ int phsi
 	      line_limits_ps(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi);
 	      int_junk=0.;
 	      for (k=SUMlo;k<=SUMhi;++k) {
-		int_array[k]=f_COVERING*Nion[element][electron]*excitsigma_ps(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
+		int_array[k]=f_COVERING*Nion[element][electron]*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k])*Labsorb[k];
 		int_junk+=EBIN*int_array[k];
 	      }      
 	      /*	      pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			      int_ans=pion_qromb(integrand_ps,1.001*Elo,0.999*Ehi);*/
+			      int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      ratePE=int_ans;
 	      /* *Atemp/(DECAYRATE+AIRATE);
@@ -1524,17 +1458,17 @@ int phsi
 	    }
 	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
 	    pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	    if ((THRESHOLD>=EMIN/doppler_rad && THRESHOLD<=EMAX/doppler_rad) && pisigma_ps(g_i,p0,p1,p2,p3,THRESHOLD) >= 0. /* This one should be left at zero????*/) {
+	    if ((THRESHOLD>=EMIN/doppler_rad && THRESHOLD<=EMAX/doppler_rad) && pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= 0. /* This one should be left at zero????*/) {
 	      for (k=1;k<=GRIDNUM;++k) {
 		if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-		else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=lowEpispline_ps(pow(10.,EGRID[k]));
-		else PIGRID[k]=pisigma_ps(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+		else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+		else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
 	      }
 	      for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
 	      pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
 	      
 	      /* calculate PI rate and modify ratePI[element][electron] */
-	      djunk=Nion[element][electron]*fac_PI_rate_integral_ps(THRESHOLD,Labsorb);
+	      djunk=Nion[element][electron]*pion_fac_PI_rate_integral(THRESHOLD,Labsorb);
 	      ratePI[element][electron]+=djunk;
 	      /*printf("edge: PI[%2d][%2d]=%e    %e\n",element,electron,djunk,THRESHOLD*doppler_rad);*/
 	    }
@@ -1582,20 +1516,20 @@ int phsi
 		
 		if (i==itemp && j==jtemp) {
 		  pion_spline(LOWE_EGRID,LOWE_RRGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_RRGRID_2);	  
-		  /*		  printf("%5d %5d  %5d %5d  %e\n",i,itemp,j,jtemp,rrsigma_ps(g_i,g_j,p0,p1,p2,p3,THRESHOLD)); */
+		  /*		  printf("%5d %5d  %5d %5d  %e\n",i,itemp,j,jtemp,pion_rrsigma(g_i,g_j,p0,p1,p2,p3,THRESHOLD)); */
 		  if (THRESHOLD>=EMIN/doppler_trans && THRESHOLD<=EMAX/doppler_trans) {
 		    for (k=1;k<=GRIDNUM;++k) RRGRID[k]=1.e-90;
 		    for (k=1;k<=GRIDNUM;++k) {
 		      Etemp=EGRID[k];
 		      if (Etemp<log10(THRESHOLD)) RRGRID[k]=1.e-90;
-		      else if (Etemp>=log10(THRESHOLD) && Etemp<=LOWE_EGRID[LOWE_GRIDNUM]) RRGRID[k]=lowEpispline_ps(pow(10.,Etemp));
-		      else RRGRID[k]=rrsigma_ps(g_i,g_j,p0,p1,p2,p3,pow(10.,Etemp)-THRESHOLD/* electron energy */);
+		      else if (Etemp>=log10(THRESHOLD) && Etemp<=LOWE_EGRID[LOWE_GRIDNUM]) RRGRID[k]=pion_lowEpispline(pow(10.,Etemp));
+		      else RRGRID[k]=pion_rrsigma(g_i,g_j,p0,p1,p2,p3,pow(10.,Etemp)-THRESHOLD/* electron energy */);
 		    }
 		    for (k=1;k<=GRIDNUM;++k) RRGRID[k]=log10(RRGRID[k]);
 		    pion_spline(EGRID,RRGRID,GRIDNUM,1.e40,1.e40,RRGRID_2);
 		    int_junk=0.;
 		    for (k=1;k<=SPECBINS;++k) {
-		      int_array[k]=fac_recombination_ps(g_i,g_j,p0,p1,p2,p3,kT,E_array[k]/doppler_trans-THRESHOLD);
+		      int_array[k]=pion_fac_recombination(g_i,g_j,p0,p1,p2,p3,kT,E_array[k]/doppler_trans-THRESHOLD);
 		      int_junk+=EBIN*int_array[k];
 		    }
 		    /* CHANGE HERE */
@@ -1603,12 +1537,12 @@ int phsi
 		    intMAX=100.*THRESHOLD*doppler_trans;
 		    if (intMAX>EMAX) intMAX=EMAX;
 		    /*		    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-				    int_ans=pion_qromb(integrand_ps,intMIN,intMAX);*/
+				    int_ans=pion_qromb(pion_integrand,intMIN,intMAX);*/
 		    if (1 || int_ans<0.) int_ans=int_junk;
 		    RECNORM=int_ans;
-		    rateRR[element][electron]=ratePI[element][electron]*RR_line_spline_ps(kT)/L_REC_kT;		  
+		    rateRR[element][electron]=ratePI[element][electron]*pion_RR_line_spline(kT)/L_REC_kT;		  
 		    for (k=1;k<=SPECBINS;++k) {
-		      djunk=rateRR[element][electron]*fac_recombination_ps(g_i,g_j,p0,p1,p2,p3,kT,E_array[k]/doppler_trans-THRESHOLD)/RECNORM;
+		      djunk=rateRR[element][electron]*pion_fac_recombination(g_i,g_j,p0,p1,p2,p3,kT,E_array[k]/doppler_trans-THRESHOLD)/RECNORM;
 		      specRR[k]+=djunk;
 		      rec_spectrum[k]+=djunk;
 		    }
@@ -1620,8 +1554,8 @@ int phsi
 	      /*read in line contributions */
 	      E0=en;
 	      E0=doppler_trans*E0;
-	      rateRR[element][electron]=ratePI[element][electron]*RR_line_spline_ps(kT)/L_REC_kT;
-	      rateDR[element][electron]=ratePI[element][electron]*DR_line_spline_ps(kT)/L_REC_kT;
+	      rateRR[element][electron]=ratePI[element][electron]*pion_RR_line_spline(kT)/L_REC_kT;
+	      rateDR[element][electron]=ratePI[element][electron]*pion_DR_line_spline(kT)/L_REC_kT;
 	      k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
 	      if ((E0-EMIN+0.5*EBIN)/EBIN-(double) k >= 0.5) ++k;
 	      if (k <= SPECBINS && k >= 1) {
@@ -1645,11 +1579,11 @@ int phsi
 	  THRESHOLD=vernerionizsigma[element][electron].Eth;
 	  int_junk=0.;
 	  for (k=1;k<=SPECBINS;++k) {
-	    int_array[k]=vernerph_ps(vernerionizsigma[element][electron],E_array[k])*Labsorb[k];
+	    int_array[k]=pion_vernerph(vernerionizsigma[element][electron],E_array[k])*Labsorb[k];
 	    int_junk+=EBIN*int_array[k];
 	  }
 	  /*	  pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		  int_ans=pion_qromb(integrand_ps,1.001*THRESHOLD*doppler_rad,0.999*EMAX);*/
+		  int_ans=pion_qromb(pion_integrand,1.001*THRESHOLD*doppler_rad,0.999*EMAX);*/
 	  if (1 || int_ans<0.) int_ans=int_junk;
 	  ratePI[element][electron]=f_COVERING*Nion[element][electron]*int_ans;
 	}
@@ -1687,7 +1621,7 @@ int phsi
 	    Yvec[k]=log10(H_rec[element].lines[LINE][k]);
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	  strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 	  E0=AngstromtokeV/hydrogen[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
@@ -1698,13 +1632,13 @@ int phsi
 	kT=Tion[element][electron];
 	for (k=1;k<=TEMPERATURES;++k) Yvec[k]=log10(H_rec[element].rrc[k]);
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 	E0=AngstromtokeV/hydrogen[element].lambda[6/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
 	for (k=1;k<=SPECBINS;++k) {
-	  int_array[k]=verner_recombination_ps(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
+	  int_array[k]=pion_verner_recombination(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
 	  int_junk+=EBIN*int_array[k];
 	}
 	THRESHOLD=vernerionizsigma[element][electron].Eth;
@@ -1713,18 +1647,18 @@ int phsi
 	intMAX=100.*THRESHOLD*doppler_trans;
 	if (intMAX>EMAX) intMAX=EMAX;
 	/*pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		int_ans=pion_qromb(integrand_ps,1.001*EMIN,0.999*EMAX);*/
+		int_ans=pion_qromb(pion_integrand,1.001*EMIN,0.999*EMAX);*/
 	if (1 || int_ans<0.) int_ans=int_junk;
 	RECNORM=int_ans;
 	for (k=1;k<=SPECBINS;++k) {
-	  rec_spectrum[k]+=R*strength/RECNORM*verner_recombination_ps(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
+	  rec_spectrum[k]+=R*strength/RECNORM*pion_verner_recombination(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
 	}
 	/* C-coefficient magnitude */
 	for (k=1;k<=TEMPERATURES;++k) {
 	  Yvec[k]=log10(H_rec[element].C[k]);
 	}
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 
 	EMion[element][electron]=R/strength;
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
@@ -1765,7 +1699,7 @@ int phsi
 	    Yvec[k]=log10(He_rec[element].lines[LINE][k]);
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	  strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 	  E0=AngstromtokeV/helium[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
@@ -1778,13 +1712,13 @@ int phsi
 	  Yvec[k]=log10(He_rec[element].rrc[k]);
 	}
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 	E0=AngstromtokeV/helium[element].lambda[9/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
 	for (k=1;k<=SPECBINS;++k) {
-	  int_array[k]=verner_recombination_ps(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
+	  int_array[k]=pion_verner_recombination(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
 	  int_junk+=EBIN*int_array[k];
 	}
 	THRESHOLD=vernerionizsigma[element][electron].Eth;
@@ -1793,18 +1727,18 @@ int phsi
 	intMAX=100.*THRESHOLD*doppler_trans;
 	if (intMAX>EMAX) intMAX=EMAX;
 	/*	pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		int_ans=pion_qromb(integrand_ps,intMIN,intMAX);*/
+		int_ans=pion_qromb(pion_integrand,intMIN,intMAX);*/
 	if (1 || int_ans<0.) int_ans=int_junk;
 	RECNORM=int_ans;
 	for (k=1;k<=SPECBINS;++k) {
-	  rec_spectrum[k]+=R*strength/RECNORM*verner_recombination_ps(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
+	  rec_spectrum[k]+=R*strength/RECNORM*pion_verner_recombination(vernerionizsigma[element][electron],kT,E_array[k]/doppler_trans);
 	}
 	/* C-coefficient magnitude */
 	for (k=1;k<=TEMPERATURES;++k) {
 	  Yvec[k]=log10(He_rec[element].C[k]);
 	}
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
-	strength=pow(10.,loglinestrength_ps(log10(Tion[element][electron])));
+	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
 
 	EMion[element][electron]=R/strength;
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
@@ -1837,10 +1771,10 @@ int phsi
       if (jhigh>SPECBINS) jhigh=SPECBINS;
       for (n=jlow;n<=jhigh;++n) {
 	/* radiative decay after photoexcitation */
-	spectemp=EBIN/(E_array[k])*gauss_ps(sigmav_trans/ccc,(E_array[n]-E_array[k])/E_array[k])*spectrumtemp[n];
+	spectemp=EBIN/(E_array[k])*pion_gauss(sigmav_trans/ccc,(E_array[n]-E_array[k])/E_array[k])*spectrumtemp[n];
 	exc_spectrum[k]+=spectemp;
 	/* recombination */
-	djunk=EBIN/(E_array[k])*gauss_ps(sigmav_trans/ccc,(E_array[n]-E_array[k])/E_array[k]);
+	djunk=EBIN/(E_array[k])*pion_gauss(sigmav_trans/ccc,(E_array[n]-E_array[k])/E_array[k]);
 	rec_spectrum[k]+=djunk*rec_spectrum_temp[n];
 	specRR[k]+=djunk*specRR_temp[n];
 	specDR[k]+=djunk*specDR_temp[n];
@@ -1867,10 +1801,10 @@ int phsi
       type5_spectrum[k]=abs_spectrum[k]+f_COVERING*FLUXAVE*abs_spectrum[k]*tau_exc[k]+FLUXAVE*rec_spectrum[k];
     }
     if (INPUT==0) {
-      type6_spectrum[k]=L_ps(E_array[k])+FLUXAVE*type2_spectrum[k];
+      type6_spectrum[k]=pion_L(E_array[k])+FLUXAVE*type2_spectrum[k];
     }
     else if (INPUT>0) {
-      type6_spectrum[k]=Linterp_ps(E_array[k])+FLUXAVE*type2_spectrum[k];
+      type6_spectrum[k]=pion_Linterp(E_array[k])+FLUXAVE*type2_spectrum[k];
     }
   }
   /* Sy1 - Pure Absorption */
@@ -1919,11 +1853,11 @@ int phsi
     l_spectrum[k]=E_spectrum[k]*convert[k];
     if (fileincr >= 0) {
       if (INPUT==0) {
-	fprintf(E_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",E_array[k]/(1.+redshift),tau[k],L_ps(E_array[k])/4./PI/sqr(D),type1_spectrum[k],type2_spectrum[k],type3_spectrum[k],type4_spectrum[k],type5_spectrum[k],type6_spectrum[k],exc_spectrum[k],specRR[k],specDR[k]);
-	fprintf(l_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",(1.+redshift)*l_array[k],tau[k],L_ps(E_array[k])*convert[k]/4./PI/sqr(D),type1_spectrum[k]*convert[k],type2_spectrum[k]*convert[k],type3_spectrum[k]*convert[k],type4_spectrum[k]*convert[k],type5_spectrum[k]*convert[k],type6_spectrum[k]*convert[k],exc_spectrum[k]*convert[k],specRR[k]*convert[k],specDR[k]*convert[k]);
+	fprintf(E_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",E_array[k]/(1.+redshift),tau[k],pion_L(E_array[k])/4./PI/sqr(D),type1_spectrum[k],type2_spectrum[k],type3_spectrum[k],type4_spectrum[k],type5_spectrum[k],type6_spectrum[k],exc_spectrum[k],specRR[k],specDR[k]);
+	fprintf(l_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",(1.+redshift)*l_array[k],tau[k],pion_L(E_array[k])*convert[k]/4./PI/sqr(D),type1_spectrum[k]*convert[k],type2_spectrum[k]*convert[k],type3_spectrum[k]*convert[k],type4_spectrum[k]*convert[k],type5_spectrum[k]*convert[k],type6_spectrum[k]*convert[k],exc_spectrum[k]*convert[k],specRR[k]*convert[k],specDR[k]*convert[k]);
       } else if (INPUT>0) {
-	fprintf(E_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",E_array[k]/(1.+redshift),tau[k],Linterp_ps(E_array[k])/4./PI/sqr(D),type1_spectrum[k],type2_spectrum[k],type3_spectrum[k],type4_spectrum[k],type5_spectrum[k],type6_spectrum[k],exc_spectrum[k]/4./PI/sqr(D),specRR[k],specDR[k]);
-	fprintf(l_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",(1.+redshift)*l_array[k],tau[k],Linterp_ps(E_array[k])*convert[k]/4./PI/sqr(D),type1_spectrum[k]*convert[k],type2_spectrum[k]*convert[k],type3_spectrum[k]*convert[k],type4_spectrum[k]*convert[k],type5_spectrum[k]*convert[k],type6_spectrum[k]*convert[k],exc_spectrum[k]*convert[k]/4./PI/sqr(D),specRR[k]*convert[k],specDR[k]*convert[k]);
+	fprintf(E_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",E_array[k]/(1.+redshift),tau[k],pion_Linterp(E_array[k])/4./PI/sqr(D),type1_spectrum[k],type2_spectrum[k],type3_spectrum[k],type4_spectrum[k],type5_spectrum[k],type6_spectrum[k],exc_spectrum[k]/4./PI/sqr(D),specRR[k],specDR[k]);
+	fprintf(l_output,"%e   %e  %e  %e  %e  %e  %e  %e  %e  %e  %e  %e\n",(1.+redshift)*l_array[k],tau[k],pion_Linterp(E_array[k])*convert[k]/4./PI/sqr(D),type1_spectrum[k]*convert[k],type2_spectrum[k]*convert[k],type3_spectrum[k]*convert[k],type4_spectrum[k]*convert[k],type5_spectrum[k]*convert[k],type6_spectrum[k]*convert[k],exc_spectrum[k]*convert[k]/4./PI/sqr(D),specRR[k]*convert[k],specDR[k]*convert[k]);
       }
       fprintf(E_specfile,"%e %e %e\n",E_array[k]/(1.+redshift)/1000.,EBIN/2./1000.,1000.*E_spectrum[k]);
       if (k==1) {    /* to avoid nonsense for first bin size */
@@ -2005,15 +1939,15 @@ int phsi
 
   if (INPUT==0) {
     for (i=1;i<=SPECBINS;++i) {
-      int_array[i]=E_array[i]*eVtoergs/ccc*L_ps(E_array[i])*(1.-exp(-tau[i]));
+      int_array[i]=E_array[i]*eVtoergs/ccc*pion_L(E_array[i])*(1.-exp(-tau[i]));
     }
   } else {
     for (i=1;i<=SPECBINS;++i) {
-      int_array[i]=E_array[i]*eVtoergs/ccc*Linterp_ps(E_array[i])*(1.-exp(-tau[i]));
+      int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
     }
   }
   pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-  int_ans=f_COVERING*pion_qromb(integrand_ps,1.0001*EMIN,0.9999*EMAX);
+  int_ans=f_COVERING*pion_qromb(pion_integrand,1.0001*EMIN,0.9999*EMAX);
   if (first==1) printf("******************************************************************\n");
   printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
   if (INPUT==0 && verbose) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
@@ -2110,291 +2044,39 @@ int phsi
   return 0.;
 }
 
-double HeI_edge_ps(double E) /* Yan, Sadeghpour, Dalgarno (1998) */
-{
-  double answer=0.,x;
-
-  x=E/24.58;
-  answer+=1.;
-  answer+=-4.7416/pow(x,1./2.);
-  answer+=14.8200/pow(x,2./2.);
-  answer+=-30.8678/pow(x,3./2.);
-  answer+=37.3584/pow(x,4./2.);
-  answer+=-23.4585/pow(x,5./2.);
-  answer+=5.9133/pow(x,6./2.);
-  answer*=733.0/pow(E/1000.,3.5)*1.e-24;
-
-  return answer;
-}
-
-double hubble_integrand_ps(double z /* redshift */) /* Peacock, Eq. 3.39, p. 76 */
-{
-  double answer;
-  double Omega_m=0.27,Omega_lambda;
-  Omega_lambda=1.-Omega_m;
-  answer=ccc/H_0/sqrt(Omega_m*cube(1.+z)+Omega_lambda);
-  return answer;
-}
-
-double hubble_integrate_ps(double z /* redshift */)
-{
-  double answer;
-  pion_splint(z_array,hubble_array,hubble_array_2,HUBBLE_BINS,z,&answer);
-  return answer;
-}
-
-double L_ps(double E /*[eV]*/) /* [photons/s/eV] */
-{
-  double answer;
-
-  if (E<=L_EMAX && E>=L_EMIN) answer=LNORM*pow(E,-GAMMA);
-  else answer=0.;
-  return answer;
-}
-
-double Linterp_ps(double E /*[eV]*/)   /* [photons/s/eV] */
-{
-  double answer;
-
-  if (E>=L_EMIN && E<=L_EMAX) pion_splint(E_input,L_input,L_input_2,INPUT_SIZE,E,&answer);
-  else answer=0.;
-  return LinterpNORM*answer;
-}
-
-double EtimesL_ps(double E /*[eV]*/)   /* [photon/s] */
-{
-  double answer;
-
-  if (E>=L_EMIN && E<=L_EMAX) pion_splint(E_input,EtimesL_input,EtimesL_input_2,INPUT_SIZE,E,&answer);
-  else answer=0.;
-  return LinterpNORM*answer;
-}
 
 /* Maxwellian electron distribution */
-double maxwell_ps(double Te, double kT, double NORM)
-{
-  double answer;
-
-  answer=NORM*sqrt(Te)*exp(-Te/kT);
-  return answer;
-}
 
 /* Recombination-to-ground distribution (needs to be normalized) */
-double verner_recombination_ps(struct VERNER_STRUCT vioniz, double kT, double E)
-{
-  double Te,THRESHOLD,answer;
-  
-  THRESHOLD=vioniz.Eth;
-  Te=E-THRESHOLD;
-  if (Te > 0.)   answer=/*grounddeg[electron]/(ge*freedeg[electron])*ccc*/sqrt(2.*Te/meeV)*maxwell_ps(Te,kT,1.)*sqr(E)/(meeV*Te)*vernerph_ps(vioniz,E);
-  else answer=0.;
-  return answer;
-}
 
 /* Recombination-to-ground distribution (needs to be normalized) */
-double fac_recombination_ps(double g_i,double g_j,double p0,double p1,double p2,double p3,double kT, double Te)
-{
-  double E,answer;
-  
-  E=Te-THRESHOLD;
-  if (Te > 0.)   answer=sqrt(2.*Te/meeV)*maxwell_ps(Te,kT,1.)*sqr(E)/(meeV*Te)*rrsigma_ps(g_i,g_j,p0,p1,p2,p3,Te);
-  else answer=0.;
-  return answer;
-}
 
 /* For calculating recombination line strengths */
-double loglinestrength_ps(double logkT)
-{
-  double answer;
-
-  pion_splint(Tvec,Yvec,Yvec2,TEMPERATURES,logkT,&answer);
-  return answer;
-}
 
 /* integrand for photoionization rate or photoexcitation rate */
-double integrand_ps(double temp)
-{
-  double answer;
-
-  pion_splint(E_array,int_array,int_array_2,SPECBINS,temp,&answer);
-  return answer;
-}
 
 /* Recombination cross-section in atomic units (a0^2 units) */
-double rrsigma_ps(double g_i, double g_j, double p0, double p1, double p2, double p3, double Te /*electron energy?*/)
-{
-  double answer,E;
 
-  E=Te+THRESHOLD;
-  answer=sqr(FINE_STRUCTURE)/2.*g_i/g_j*(sqr(E)/Te*(eVtoHartree))*pisigma_ps(g_i,p0,p1,p2,p3,E);
-  return answer;
-}
-
-double rrspline_ps(double E)
-{
-  double answer;
-
-  E=log10(E);
-  pion_splint(EGRID,RRGRID,RRGRID_2,GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
-
-double lowErrspline_ps(double E)
-{
-  double answer;
-  
-  E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_RRGRID,LOWE_RRGRID_2,LOWE_GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
-
-double RR_line_spline_ps(double temp)
-{
-  double answer;
-  
-  pion_splint(L_kT,RR_line,RR_line_2,RECNUM,temp,&answer);
-  return answer;
-}
-
-double DR_line_spline_ps(double temp)
-{
-  double answer;
-  
-  pion_splint(L_kT,DR_line,DR_line_2,RECNUM,temp,&answer);
-  return answer;
-}
-
-double L_RR_spline_ps(double temp)
-{
-  double answer;
-  
-  pion_splint(L_kT,L_RR,L_RR_2,RECNUM,temp,&answer);
-  return answer;
-}
-
-double L_DR_spline_ps(double temp)
-{
-  double answer;
-  
-  pion_splint(L_kT,L_DR,L_DR_2,RECNUM,temp,&answer);
-  return answer;
-}
-
-double L_REC_spline_ps(double temp)
-{
-  double answer;
-  
-  pion_splint(L_kT,L_REC,L_REC_2,RECNUM,temp,&answer);
-  return answer;
-}
-
-double fac_PI_rate_integral_ps(double THRESHOLD,double Labsorb[])
-{
-  int k,klo,khi,kth;
-  double strength,pitemp=0.;
-  double int_junk,int_ans;
-
-  klo=(int) ((0.5*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  kth=(int) ((1.1*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  if (klo < 1) klo=1;
-  if (klo > SPECBINS) klo=SPECBINS;
-  k=klo;
-  pi_rate_lim=fac_ionizsigma_ps(THRESHOLD,E_array[kth]/doppler_rad)*Labsorb[kth];
-  /*  k=1;
-  while (k<SPECBINS) {*/
-  int_junk=0.;
-  while ((k<=kth || pitemp>=1.e-4*pi_rate_lim) && k < SPECBINS) {
-    k=k+1;
-    pitemp=fac_ionizsigma_ps(THRESHOLD,E_array[k]/doppler_rad)*Labsorb[k];
-    int_array[k]=pitemp;
-    int_junk+=EBIN*pitemp;
-  }
-  khi=(int) ((double) k/2.);
-  if (khi>SPECBINS) khi=SPECBINS;
-  /*  pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-      int_ans=pion_qromb(integrand_ps,(1.001)*THRESHOLD*doppler_rad,E_array[khi]);*/
-  if (1 || int_ans<0.) int_ans=int_junk;
-  strength=f_COVERING*int_ans;
-  return strength;
-}
-
-double doppler_ps(double v /*[cm/s]*/) /*[unitless] red: v>0.,d(v)>1, blue: v<0.,d(v)<1*/
-{
-  double answer;
-
-  answer=sqrt((1.-v/ccc)/(1.+v/ccc));
-  return answer;
-}
 
 /* For convolution: Normalized gaussian profile centered at 0. with s=sigma */
-double gauss_ps(double s,double x) 
-{
-  double answer=0.;
-
-  answer=1./sqrt(2.*PI)/s*exp(-sqr((x)/s)/2.);  
-  return answer;
-}
 
 /* Photoexcitation cross section [cm^2] from ground.
    global: E0, DELTANUD, OSCILLATOR, ALPHA */
-double excitsigma_ps(double E0, double OSCILLATOR,double DELTANUD,double ALPHA, double E)
-{
-  double answer;
-  double V;
-
-  V=(E-E0)/(hhh*DELTANUD*ergstoeV);  
-  answer=PI*re*ccc*OSCILLATOR/sqrt(PI)/DELTANUD*voigt_ps(ALPHA,V)*doppler_rad;
-  return answer;
-}
 
 /* Differential oscillator strength in atomic units: 1/Hartree = 1/(2.*13.6 eV) */
-double dfdE_ps(double g_i,double p0, double p1, double p2, double p3, double Te)
-{
-  double x,y,answer,E;
-
-  E=Te+THRESHOLD;
-  x=(Te+p3)/p3;
-  y=(1.+p2)/(sqrt(x)+p2);
-  answer=E/(Te+p3)*p0*pow(x,-3.5-ANGULAR+0.5*p1)*pow(y,p1)/g_i;
-  return answer;
-}
 
 /* Photoionization cross-section in atomic units */
-double pisigma_ps(double g_i, double p0, double p1, double p2, double p3, double E)
-{
-  double answer;
 
-  answer=sqr(a0)*2.*PI*FINE_STRUCTURE*dfdE_ps(g_i,p0,p1,p2,p3,E-THRESHOLD);
-  return answer;
-}
-
-double pispline_ps(double E)
-{
-  double answer;
-  
-  E=log10(E);
-  pion_splint(EGRID,PIGRID,PIGRID_2,GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
-
-double lowEpispline_ps(double E)
-{
-  double answer;
-  
-  E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_PIGRID,LOWE_PIGRID_2,LOWE_GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
 
 void line_limits_ps(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi)
 {
   double Vlim;
   
-  /*tau_lim=Nion_column_density*excitsigma=Nion_column_density*PI*re*ccc*OSCILLATOR/sqrt(PI)/DELTANUD*voigt_ps(ALPHA,V);*/
+  /*tau_lim=Nion_column_density*excitsigma=Nion_column_density*PI*re*ccc*OSCILLATOR/sqrt(PI)/DELTANUD*pion_voigt(ALPHA,V);*/
   
   Vlim=sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim);
-  if (voigt_ps(ALPHA,Vlim)>voigt_lim) {
-    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*voigt_ps(ALPHA,0.)));
+  if (pion_voigt(ALPHA,Vlim)>voigt_lim) {
+    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*pion_voigt(ALPHA,0.)));
   }
   if (E0-Vlim*(hhh*DELTANUD*ergstoeV)>EMIN) {
     *Elo=E0-Vlim*(hhh*DELTANUD*ergstoeV);
@@ -2422,229 +2104,12 @@ void line_opacity_ps(double Nion_column_density,double E0,double OSCILLATOR,doub
   line_limits_ps(Nion_column_density,E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi);
 
   for (k=SUMlo;k<=SUMhi;++k) {
-    tau_exc_p[k]+=Nion_column_density*excitsigma_ps(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
+    tau_exc_p[k]+=Nion_column_density*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
   }
 }
 
 /* ground-state photoionization cross-section from Verner */
-double vernerph_ps(struct VERNER_STRUCT verner, double E)
-{
-  double answer=0.;
-  double Eth,Emax,Ezero,s0,ya,P,yw,y0,y1;
-  double F,x,y;
-
-  Eth=verner.Eth;
-  Emax=verner.Emax;
-  if (E>=Eth && E<=Emax) {
-    Ezero=verner.Ezero;
-    s0=verner.s0;
-    ya=verner.ya;
-    P=verner.P;
-    yw=verner.yw;
-    y0=verner.y0;
-    y1=verner.y1;
-
-    x=E/Ezero-y0;
-    y=sqrt(sqr(x)+sqr(y1));
-    F=(sqr(x-1.)+sqr(yw))*pow(y,0.5*P-5.5)*pow(1.+sqrt(y/ya),-P);
-    answer=1.e-18*s0*F;
-  }
-  return answer;
-}
 
 /* ground-state photoionization cross-section from Verner */
-double vernerpartialph_ps(struct VERNER_PARTIAL_STRUCT verner, double E)
-{
-  double answer=0.;
-  double Eth,Ezero,s0,ya,P,yw,l;
-  int angular;
-  double F,y;
 
-  Eth=verner.Eth;
-  if (E>=Eth) {
-    Ezero=verner.Ezero;
-    s0=verner.s0;
-    ya=verner.ya;
-    P=verner.P;
-    yw=verner.yw;
-    angular=verner.angular;
-    l=(double) angular;
-
-    y=E/Ezero;
-    F=(sqr(y-1.)+sqr(yw))*pow(y,-(5.5+l-0.5*P))*pow(1.+sqrt(y/ya),-P);
-    answer=1.e-18*s0*F;
-  }
-  return answer;
-}
-
-double fac_ionizsigma_ps(double THRESHOLD, double E)
-{
-  double answer=0.;
-  
-  if (E>=THRESHOLD) {
-    if (E<=pow(10.,LOWE_EGRID[1])) answer=lowEpispline_ps(E);
-    else answer=pispline_ps(E);
-  }
-  return answer;
-}
-
-void HeI_edge_opacity_ps(double Nion_column_density, double THRESHOLD, double tau_p[])
-{
-  int k,klo,kth;
-  double taujunk;
-  
-  klo=(int) ((0.95*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  kth=(int) ((1.05*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  if (klo < 1) klo=1;
-  if (klo > SPECBINS) klo=SPECBINS;
-  k=klo;
-  taujunk=Nion_column_density*HeI_edge_ps(E_array[k]/doppler_rad);
-  while ((taujunk > tau_lim || k <= kth) && k < SPECBINS) {
-    k=k+1;
-    taujunk=Nion_column_density*HeI_edge_ps(E_array[k]/doppler_rad);
-    tau_p[k]+=taujunk;
-  }
-}
-
-void fac_edge_opacity_ps(double Nion_column_density, double THRESHOLD, double tau_p[]) 
-{
-  int k,klo,kth;
-  double taujunk;
-  
-  klo=(int) ((0.95*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  kth=(int) ((1.05*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  if (klo < 1) klo=1;
-  if (klo > SPECBINS) klo=SPECBINS;
-  k=klo;
-  taujunk=Nion_column_density*fac_ionizsigma_ps(THRESHOLD,E_array[k]/doppler_rad);
-  while ((taujunk > tau_lim || k <= kth) && k < SPECBINS) {
-    k=k+1;
-    taujunk=Nion_column_density*fac_ionizsigma_ps(THRESHOLD,E_array[k]/doppler_rad);
-    tau_p[k]+=taujunk;
-  }
-}
-
-void verner_full_edge_opacity_ps(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]) 
-{
-  int k,klo,kth;
-  double taujunk;
-  
-  klo=(int) ((0.95*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  kth=(int) ((1.05*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  if (klo < 1) klo=1;
-  if (klo > SPECBINS) klo=SPECBINS;
-  k=klo;
-  taujunk=Nion_column_density*vernerph_ps(verner, E_array[k]/doppler_rad);
-  while ((taujunk > tau_lim || k <= kth) && k < SPECBINS) {
-    k=k+1;
-    taujunk=Nion_column_density*vernerph_ps(verner, E_array[k]/doppler_rad);
-    tau_p[k]+=taujunk;
-  }
-}
-
-void verner_partial_edge_opacity_ps(double Nion_column_density, double THRESHOLD, struct VERNER_PARTIAL_STRUCT verner, double tau_p[]) 
-{
-  int k,klo,kth;
-  double taujunk;
-  
-  klo=(int) ((0.95*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  kth=(int) ((1.05*THRESHOLD*doppler_rad-EMIN+0.5*EBIN)/EBIN);
-  if (klo < 1) klo=1;
-  if (klo > SPECBINS) klo=SPECBINS;
-  k=klo;
-  taujunk=Nion_column_density*vernerpartialph_ps(verner, E_array[k]/doppler_rad);
-  while ((taujunk > tau_lim || k <= kth) && k < SPECBINS) {
-    k=k+1;
-    taujunk=Nion_column_density*vernerpartialph_ps(verner, E_array[k]/doppler_rad);
-    tau_p[k]+=taujunk;
-  }
-}
-
-double voigt_ps(double alpha,double v)
-{
-  int i;
-  double *a,*b,*c;
-  double v2,v3,fac1,fac2;
-  double p1,p2,p3,p4,p5,p6,p7;
-  double o1,o2,o3,o4,o5,o6,o7;
-  double q1,q2;
-  double r1,r2;
-  double H;
- 
-  a=pion_dvector(1,7);
-  b=pion_dvector(1,7);
-  c=pion_dvector(1,7);
-
-  a[1]=122.607931777104326;
-  a[2]=214.382388694706425;
-  a[3]=181.928533092181549;
-  a[4]=93.155580458134410;
-  a[5]=30.180142196210589;   
-  a[6]=5.912626209773153;
-  a[7]=0.564189583562615;
-
-  b[1]=122.607931773875350;
-  b[2]=352.730625110963558;
-  b[3]=457.334478783897737;
-  b[4]=348.703917719495792;
-  b[5]=170.354001821091472;
-  b[6]=53.992906912940207;
-  b[7]=10.479857114260399;
-  
-  c[1]=0.5641641;
-  c[2]=0.8718681;
-  c[3]=1.474395;
-  c[4]=-19.57862;
-  c[5]=802.4513;
-  c[6]=-4850.316;
-  c[7]=8031.468;
-  
-  if (alpha <= .001 && v >= 2.5) {
-    v2   = v * v;
-    v3   = 1.0;
-    fac1 = c[1];
-    fac2 = c[1] * (v2 - 1.0);
-      
-    for (i=1;i<=7;++i) {
-      v3     = v3 * v2;
-      fac1 = fac1 + c[i] / v3;
-      fac2 = fac2 + c[i] / v3 * (v2 - (double) i);
-    }
-    
-    H = exp(-v2) * (1. + sqr(alpha) * (1. - 2.*v2)) + fac1 * (alpha/v2);
-    
-  } else { 
-    p1 = alpha;
-    o1 = -v;
-    p2 = (p1 * alpha + o1 * v);
-    o2 = (o1 * alpha - p1 * v);
-    p3 = (p2 * alpha + o2 * v);
-    o3 = (o2 * alpha - p2 * v);
-    p4 = (p3 * alpha + o3 * v);
-    o4 = (o3 * alpha - p3 * v);
-    p5 = (p4 * alpha + o4 * v);
-    o5 = (o4 * alpha - p4 * v);
-    p6 = (p5 * alpha + o5 * v);
-    o6 = (o5 * alpha - p5 * v);
-    p7 = (p6 * alpha + o6 * v);
-    o7 = (o6 * alpha - p6 * v);
-    
-    q1 = a[1] + p1 * a[2] + p2 * a[3] + p3 * a[4] +
-      p4 * a[5] + p5 * a[6] + p6 * a[7];
-    r1 =        o1 * a[2] + o2 * a[3] + o3 * a[4] +
-      o4 * a[5] + o5 * a[6] + o6 * a[7];
-    q2 = b[1] + p1 * b[2] + p2 * b[3] + p3 * b[4] +
-      p4 * b[5] + p5 * b[6] + p6 * b[7] + p7;
-    r2 =        o1 * b[2] + o2 * b[3] + o3 * b[4] +
-      o4 * b[5] + o5 * b[6] + o6 * b[7] + o7;
-    
-    H = (q1 * q2 + r1 * r2) / (q2 * q2 + r2 * r2);
-  }
-
-  pion_free_dvector(a,1,7);
-  pion_free_dvector(b,1,7);
-  pion_free_dvector(c,1,7);
-  
-  return H;
-}
 
