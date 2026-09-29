@@ -1,0 +1,8 @@
+foreach el (Ne Mg Al Si S Ar Ca Fe Ni)
+  foreach num (01 02 03 04 05 06 07 08 09 10)
+    echo $el $num
+    awk '$3==0 && $1!="Endian" && $1!="NTRANS" { print $0}' kdata/${el}${num}a.tr > kdata/${el}${num}a.tr_short
+    awk '$6>=0.001 {print $0}' kdata/${el}${num}a.tr_short > kdata/${el}${num}a.tr_shorter
+    awk '$1==0 {print;getline;print;getline;print;getline;print;getline;print;getline;print;getline;print;getline;print}' kdata/${el}${num}a.rr > kdata/${el}${num}a.pi_short
+  end
+end
