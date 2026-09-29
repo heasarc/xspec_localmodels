@@ -568,3 +568,75 @@ double pion_voigt(double alpha,double v)
   
   return H;
 }
+
+/* Line integration limits, shared by all models.
+ *
+ * Solves for the detuning v_lim at which the line's optical depth falls below
+ * tau_lim (using the Lorentz-wing limit of the Voigt function), or, if the
+ * profile is still above voigt_lim there, for where it falls to voigt_lim of
+ * line centre. Returns that interval both as energies [Elo,Ehi] and as the
+ * spectrum bin range [SUMlo,SUMhi] the callers loop over. tau_lim and
+ * voigt_lim are per-model state; see photoion_state.h.
+ *
+ * pad_lo and pad_hi scale Elo and Ehi before converting to bin indices. The
+ * absorption models pass 1.0 and 1.0 and get the interval unchanged; the
+ * emission models pass 0.9 and 1.1, widening the range so that their
+ * fixed-grid sum does not truncate the wings of an integrated quantity. Note
+ * the scaling is of absolute energy, not of line width -- at typical X-ray
+ * line energies 0.9/1.1 is a far wider margin than the line itself.
+ *
+ * clamp_both selects which clamping the caller had before this was shared, and
+ * the two differ only for a line lying entirely outside [EMIN,EMAX]. With
+ * clamp_both false (absorption models) SUMlo may exceed SUMhi, so the caller's
+ * loop runs zero times, which is correct: the line does not reach the grid.
+ * With it true (emission models) both indices are pinned to the nearest edge,
+ * so the caller deposits one bin of far-wing opacity at the boundary for a line
+ * that is not in the band at all. Only the two clamps applied in both branches
+ * are needed to keep the index in range; the extra pair is not a safety
+ * measure. Preserved as-is so that sharing these routines changes no results;
+ * which behavior is wanted is a separate question.
+ */
+void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both)
+{
+  double Vlim;
+
+  Vlim=sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim);
+  if (pion_voigt(ALPHA,Vlim)>voigt_lim) {
+    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*pion_voigt(ALPHA,0.)));
+  }
+  if (E0-Vlim*(hhh*DELTANUD*ergstoeV)>EMIN) {
+    *Elo=E0-Vlim*(hhh*DELTANUD*ergstoeV);
+  } else *Elo=(1.+SMALL)*EMIN;
+  if (E0+Vlim*(hhh*DELTANUD*ergstoeV)<EMAX) {
+    *Ehi=E0+Vlim*(hhh*DELTANUD*ergstoeV);
+  } else *Ehi=(1.-SMALL)*EMAX;
+
+  *SUMlo=(int) ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN);
+  if ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMlo);
+  *SUMhi=(int) ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN);
+  if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMhi);
+
+  if (clamp_both) {
+    if (*SUMlo > SPECBINS) *SUMlo=SPECBINS;
+    else if (*SUMlo < 1) *SUMlo=1;
+    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
+    else if (*SUMhi < 1) *SUMhi=1;
+  } else {
+    if (*SUMlo < 1) *SUMlo=1;
+    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
+  }
+}
+
+/* Accumulate one line's excitation opacity over the range pion_line_limits
+ * returns. pad_lo and pad_hi are passed straight through. */
+void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[],double pad_lo,double pad_hi,int clamp_both)
+{
+  double Ehi,Elo;
+  int k,SUMlo,SUMhi;
+
+  pion_line_limits(Nion_column_density,E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi,pad_lo,pad_hi,clamp_both);
+
+  for (k=SUMlo;k<=SUMhi;++k) {
+    tau_exc_p[k]+=Nion_column_density*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
+  }
+}

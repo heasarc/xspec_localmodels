@@ -60,8 +60,6 @@ char* FGMSTR(char* name);
 /* Subroutines from PHOTOION */
 
 /* SIABS Subroutines */
-void line_limits_si(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi);
-void line_opacity_si(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[]);
 void pion_fac_edge_opacity(double Nion_column_density, double THRESHOLD, double tau_edge_p[]) ;
 
 
@@ -426,7 +424,7 @@ int siabs
 	  ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
 	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
 	  ALPHA=ga/(4.*PI*DELTANUD);
-	  line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	}
       } else if (electron == 2) {
 	helium[element].lambda[LINE]=WAVE;
@@ -442,7 +440,7 @@ int siabs
 	  ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
 	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
 	  ALPHA=ga/(4.*PI*DELTANUD);
-	  line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	}
       }
     }
@@ -481,7 +479,7 @@ int siabs
 	    /* taking classical value for "ga=gamma" from p. 112-114 B+D */
 	    ga=2.47*pow(10.,-22.)*sqr(E0*eVtoergs/hhh);
 	    ALPHA=ga/(4.*PI*DELTANUD);
-	  line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	  }
 	}
       }
@@ -556,7 +554,7 @@ int siabs
 		OSCILLATOR=ftemp;
 		ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
 		ALPHA=ga/(4.*PI*DELTANUD);
-		line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+		pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	      }
 	    }
 	    fclose(input);
@@ -627,7 +625,7 @@ int siabs
 	      OSCILLATOR=ftemp;
 	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
 	      ALPHA=ga/(4.*PI*DELTANUD);
-	      line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	    }
 	  }
 	  fclose(input);
@@ -669,7 +667,7 @@ int siabs
 	      OSCILLATOR=ftemp;
 	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
 	      ALPHA=ga/(4.*PI*DELTANUD);
-	      line_opacity_si(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc);
+	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	    }
 	  }
 	  fclose(input);
@@ -823,47 +821,6 @@ int siabs
 
 /* Photoionization cross-section in atomic units */
 
-
-void line_limits_si(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi)
-{
-  double Vlim;
-  
-  /*tau_lim=Nion_column_density*excitsigma=Nion_column_density*PI*re*ccc*OSCILLATOR/sqrt(PI)/DELTANUD*pion_voigt(ALPHA,V);*/
-  
-  Vlim=sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim);
-  if (pion_voigt(ALPHA,Vlim)>voigt_lim) {
-    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*pion_voigt(ALPHA,0.)));
-  }
-  if (E0-Vlim*(hhh*DELTANUD*ergstoeV)>EMIN) {
-    *Elo=E0-Vlim*(hhh*DELTANUD*ergstoeV);
-  } else *Elo=(1.+SMALL)*EMIN;
-  if (E0+Vlim*(hhh*DELTANUD*ergstoeV)<EMAX) {
-    *Ehi=E0+Vlim*(hhh*DELTANUD*ergstoeV);
-  } else *Ehi=(1.-SMALL)*EMAX;
-
-}
-
-void line_opacity_si(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[])
-{
-  int SUMlo,SUMhi;
-  double Ehi,Elo,djunk;
-  int k,klo,khi;
-
-  line_limits_si(Nion_column_density,E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi);
-  SUMlo=(int) ((Elo-EMIN+0.5*EBIN)/EBIN);
-  if ((Elo-EMIN+0.5*EBIN)/EBIN-(double) SUMlo >= 0.5) ++SUMlo;
-  SUMhi=(int) ((Ehi-EMIN+0.5*EBIN)/EBIN);
-  if ((Ehi-EMIN+0.5*EBIN)/EBIN-(double) SUMlo >= 0.5) ++SUMhi;
-  if (SUMlo < 1) SUMlo=1;
-  if (SUMhi > SPECBINS) SUMhi=SPECBINS;
-  klo=SUMlo;
-  khi=SUMhi;
-
-  for (k=klo;k<=khi;++k) {
-    djunk=Nion_column_density*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
-    tau_exc_p[k]+=djunk;
-  }
-}
 
 /* ground-state photoionization cross-section from Verner */
 
