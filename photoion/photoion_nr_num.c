@@ -2,8 +2,11 @@
  *
  * Extracted verbatim from the per-model copies, which were byte-identical
  * apart from a name suffix. Romberg integration (qromb/trapzd), polynomial
- * interpolation (polint), cubic splines (spline/splint) and Gauss-Jordan
- * elimination (gaussj).
+ * interpolation (polint) and cubic splines (spline/splint).
+ *
+ * gaussj (Gauss-Jordan elimination) was carried over too, but had no callers
+ * in any of the 11 models, and is gone. trapzd and polint are reached only
+ * from qromb.
  *
  * Arrays follow the Numerical Recipes unit-offset convention; see
  * photoion_nr_alloc.h.
@@ -22,7 +25,6 @@
 #define K     (5)
 
 #define pion_FUNC(x) ((*func)(x))
-#define pion_SWAP(a,b) {double temp=(a);(a)=(b);(b)=temp;}
 
 double pion_qromb(double (*func)(double), double a, double b)
 {
@@ -149,57 +151,4 @@ void pion_splint(double xa[], double ya[], double y2a[], int n, double x, double
    a=(xa[khi]-x)/h;
    b=(x-xa[klo])/h;
    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
-}
-
-void pion_gaussj(double **a, int n, double **b, int m)
-{
-   int *indxc,*indxr,*ipiv;
-   int i, icol=1, irow=1, j, k, l, ll;
-   double big,dum,pivinv;
-
-   indxc=pion_ivector(1,n);
-   indxr=pion_ivector(1,n);
-   ipiv=pion_ivector(1,n);
-   for (j=1;j<=n;j++) ipiv[j]=0;
-   for (i=1;i<=n;i++) {
-      big=0.0;
-      for (j=1;j<=n;j++)
-         if (ipiv[j] != 1)
-            for (k=1;k<=n;k++) {
-               if (ipiv[k] == 0) {
-                  if (fabs(a[j][k]) >= big) {
-                     big=fabs(a[j][k]);
-                     irow=j;
-                     icol=k;
-                  }
-               } else if (ipiv[k] > 1) pion_nrerror("GAUSSJ: Singular Matrix-1");
-            }
-      ++(ipiv[icol]);
-      if (irow != icol) {
-         for (l=1;l<=n;l++) pion_SWAP(a[irow][l],a[icol][l])
-         for (l=1;l<=m;l++) pion_SWAP(b[irow][l],b[icol][l])
-      }
-      indxr[i]=irow;
-      indxc[i]=icol;
-      if (a[icol][icol] == 0.0) pion_nrerror("GAUSSJ: Singular Matrix-2");
-      pivinv=1.0/a[icol][icol];
-      a[icol][icol]=1.0;
-      for (l=1;l<=n;l++) a[icol][l] *= pivinv;
-      for (l=1;l<=m;l++) b[icol][l] *= pivinv;
-      for (ll=1;ll<=n;ll++)
-         if (ll != icol) {
-            dum=a[ll][icol];
-            a[ll][icol]=0.0;
-            for (l=1;l<=n;l++) a[ll][l] -= a[icol][l]*dum;
-            for (l=1;l<=m;l++) b[ll][l] -= b[icol][l]*dum;
-         }
-   }
-   for (l=n;l>=1;l--) {
-      if (indxr[l] != indxc[l])
-         for (k=1;k<=n;k++)
-            pion_SWAP(a[k][indxr[l]],a[k][indxc[l]]);
-   }
-   pion_free_ivector(ipiv,1,n);
-   pion_free_ivector(indxr,1,n);
-   pion_free_ivector(indxc,1,n);
 }

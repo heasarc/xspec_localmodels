@@ -10,6 +10,5 @@ double pion_trapzd(double (*func)(double), double a, double b, int n);
 void pion_polint(double xa[], double ya[], int n, double x, double *y, double *dy);
 void pion_spline(double x[], double y[], int n, double yp1, double ypn, double y2[]);
 void pion_splint(double xa[], double ya[], double y2a[], int n, double x, double *y);
-void pion_gaussj(double **a, int n, double **b, int m);
 
 #endif /* PHOTOION_NR_NUM_H */

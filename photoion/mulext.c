@@ -11,8 +11,6 @@
 
 #include "photoion_nr_alloc.h"
 
-void nrerror_ex(char error_text[]);
-
 int mulext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
 
