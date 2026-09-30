@@ -7,6 +7,7 @@
 #include "photoion_phys.h"
 
 #include "photoion_nr_num.h"
+#include "photoion_spline.h"
 #include "photoion_state.h"
 
 #include "photoion_nr_alloc.h"
