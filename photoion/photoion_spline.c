@@ -114,7 +114,16 @@ static struct slot *slot_put(const double *key, const double *x, const double *y
    slot_clear(s);
    s->sp = build(x + 1, y + 1, n);          /* unit-offset -> zero-based base */
    if (!s->sp) { pion_error("spline: gsl_spline_alloc/init failed"); return NULL; }
-   s->acc = gsl_interp_accel_alloc();
+   /* Suspended for the same reason as in build(): on failure this one reaches
+    * GSL_ERROR_NULL, and the default handler aborts the process. A NULL accel
+    * is not fatal here -- GSL's eval falls back to a bisection search -- so
+    * report it and carry on. */
+   {
+      gsl_error_handler_t *old = gsl_set_error_handler_off();
+      s->acc = gsl_interp_accel_alloc();
+      gsl_set_error_handler(old);
+      if (!s->acc) pion_error("spline: gsl_interp_accel_alloc failed");
+   }
    s->key = key; s->x = x; s->y = y; s->n = n;
    return s;
 }
