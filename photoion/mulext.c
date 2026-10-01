@@ -8,7 +8,7 @@
 #include "photoion_phys.h"
 
 
-#include "photoion_nr_alloc.h"
+#include "photoion_alloc.h"
 
 int mulext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);

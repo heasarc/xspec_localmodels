@@ -39,7 +39,7 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
 
-#include "photoion_nr_alloc.h"   /* pion_nrerror */
+#include "photoion_alloc.h"   /* pion_error */
 #include "photoion_spline.h"
 
 /* 16 distinct y2 arrays exist across the 11 models; 32 leaves headroom. */
@@ -113,7 +113,7 @@ static struct slot *slot_put(const double *key, const double *x, const double *y
    }
    slot_clear(s);
    s->sp = build(x + 1, y + 1, n);          /* unit-offset -> zero-based base */
-   if (!s->sp) { pion_nrerror("spline: gsl_spline_alloc/init failed"); return NULL; }
+   if (!s->sp) { pion_error("spline: gsl_spline_alloc/init failed"); return NULL; }
    s->acc = gsl_interp_accel_alloc();
    s->key = key; s->x = x; s->y = y; s->n = n;
    return s;
@@ -157,7 +157,7 @@ static int eval_outside(const struct slot *s, double x, double *y)
    if (x < xa[1]) { xe = xa[1]; xf = xa[2]; }        /* first interval */
    else           { xe = xa[n]; xf = xa[n-1]; }      /* last interval  */
    h = xf - xe;
-   if (h == 0.0) { pion_nrerror("splint: zero-width end interval"); return 1; }
+   if (h == 0.0) { pion_error("splint: zero-width end interval"); return 1; }
 
    st |= gsl_spline_eval_e(s->sp, xe, s->acc, &f);
    st |= gsl_spline_eval_deriv_e(s->sp, xe, s->acc, &d1);
@@ -178,7 +178,7 @@ void pion_spline(double x[], double y[], int n, double yp1, double ypn, double y
     * for both, so a real end derivative has never been requested; say so rather
     * than silently ignore it. */
    if (yp1 <= 0.99e30 || ypn <= 0.99e30)
-      pion_nrerror("spline: clamped end derivatives are not supported");
+      pion_error("spline: clamped end derivatives are not supported");
 
    slot_put(y2, x, y, n);
 }
@@ -191,11 +191,11 @@ void pion_splint(double xa[], double ya[], double y2a[], int n, double x, double
 
    if (x >= xa[1] && x <= xa[n]) {
       if (gsl_spline_eval_e(s->sp, x, s->acc, y) != GSL_SUCCESS) {
-         pion_nrerror("splint: evaluation failed");
+         pion_error("splint: evaluation failed");
          *y = 0.0;
       }
    } else if (eval_outside(s, x, y)) {
-      pion_nrerror("splint: extrapolation failed");
+      pion_error("splint: extrapolation failed");
       *y = 0.0;
    }
 }

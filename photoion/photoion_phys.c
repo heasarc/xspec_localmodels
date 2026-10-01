@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "photoion_nr_alloc.h"
+#include "photoion_alloc.h"
 #include "photoion_spline.h"
 #include "photoion_state.h"
 #include "photoion_phys.h"

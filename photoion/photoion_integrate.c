@@ -68,8 +68,8 @@
  * never switched off for good.
  *
  * On non-convergence qag still writes its best estimate, and that is returned
- * with a report -- the same contract as qromb, which fell through to nrerror
- * (whose body is commented out) and returned its last unconverged value.
+ * with a report -- the same contract as qromb, which fell through to its error
+ * stub (whose body was commented out) and returned its last unconverged value.
  *
  * NOT re-entrant: one workspace is shared by every call, in keeping with the
  * rest of the package. None of the four live integrands integrates.
@@ -82,7 +82,7 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
 
-#include "photoion_nr_alloc.h"   /* pion_nrerror */
+#include "photoion_alloc.h"   /* pion_error */
 #include "photoion_integrate.h"
 
 /* Subinterval limit. The workspace is sized to match, so qag can bisect 1000
@@ -162,7 +162,7 @@ double pion_integrate(double (*func)(double), double a, double b)
    if (!ws) ws = gsl_integration_workspace_alloc((size_t) LIMIT);
    if (!ws) {
       gsl_set_error_handler(old);
-      pion_nrerror("integrate: gsl_integration_workspace_alloc failed");
+      pion_error("integrate: gsl_integration_workspace_alloc failed");
       return 0.0;
    }
 
@@ -173,7 +173,7 @@ double pion_integrate(double (*func)(double), double a, double b)
 
    /* Best estimate plus a report, as qromb did on JMAX exhaustion. */
    if (status != GSL_SUCCESS)
-      pion_nrerror("integrate: gsl_integration_qag did not converge");
+      pion_error("integrate: gsl_integration_qag did not converge");
 
    return result;
 }
