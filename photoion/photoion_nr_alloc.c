@@ -12,7 +12,10 @@
  * and the matching free_* routine adds the offset back before free().
  *
  * matrix/imatrix/submatrix/convert_matrix and their free_* partners were also
- * carried over but had no callers in any of the 11 models, and are gone.
+ * carried over but had no callers in any of the 11 models, and are gone. So is
+ * vector/free_vector: it was byte-identical to dvector/free_dvector once both
+ * were widened from NR's float, and its only callers were inside spline and
+ * polint, which GSL has now replaced.
  */
 
 #include <stdlib.h>
@@ -27,18 +30,6 @@ void pion_nrerror(char error_text[])
    fprintf(stderr,"%s\n",error_text);
    fprintf(stderr,"...now exiting to system...\n");
    exit(1);*/
-}
-
-double *pion_vector(int nl, int nh)
-{
-   double *v;
-   int i,sz;
-
-   sz = nh-nl+1;
-   v=(double *)malloc((unsigned) sz*sizeof(double));
-   if (!v) pion_nrerror("allocation failure in vector()");
-   for (i=0; i<sz; ++i) v[i] = .0; 
-   return v-nl;
 }
 
 int *pion_ivector(int nl, int nh)
@@ -82,11 +73,6 @@ double **pion_dmatrix(int nrl, int nrh, int ncl, int nch)
       m[i] -= ncl;
    }
    return m;
-}
-
-void pion_free_vector(double *v, int nl, int nh)
-{
-   free((char*) (v+nl));
 }
 
 void pion_free_ivector(int *v, int nl, int nh)

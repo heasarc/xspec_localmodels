@@ -6,7 +6,7 @@
 
 #include "photoion_phys.h"
 
-#include "photoion_nr_num.h"
+#include "photoion_integrate.h"
 #include "photoion_spline.h"
 #include "photoion_state.h"
 
@@ -586,7 +586,7 @@ int phsi
 	hubble_array[k]=pion_hubble_integrand(z_array[k]);
       }
       pion_spline(z_array,hubble_array,HUBBLE_BINS,1.e40,1.e40,hubble_array_2);
-      D=pion_qromb(pion_hubble_integrate,0.,redshift); /* if D=0, use Hubble law */
+      D=pion_integrate(pion_hubble_integrate,0.,redshift); /* if D=0, use Hubble law */
       if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=71 km/s/Mpc, Omega_m=0.27, Omega_lambda=0.73)\n",redshift,D/parsectocm/1.e6);
       pion_free_dvector(z_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array,1,HUBBLE_BINS);
@@ -1192,7 +1192,7 @@ int phsi
     pion_spline(E_input,EtimesL_input,INPUT_SIZE,1.e40,1.e40,EtimesL_input_2);
     LinterpNORM=1.;
     if (L_X>0.) {
-      djunk=pion_qromb(pion_EtimesL,1.001*L_EMIN,0.999*L_EMAX);
+      djunk=pion_integrate(pion_EtimesL,1.001*L_EMIN,0.999*L_EMAX);
       LinterpNORM=L_X*ergstoeV/djunk;
       if (verbose) printf("LinterpNORM = %e\n",LinterpNORM);
     }
@@ -1257,7 +1257,7 @@ int phsi
 		int_junk+=EBIN*int_array[k];
 	      }
 	      /*	    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			    int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
+			    int_ans=pion_integrate(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      H_excite[element][LINE]=f_COVERING*Nion[element][electron]*int_ans;
 	      if (H_excite[element][LINE]<0.) H_excite[element][LINE]=f_COVERING*Nion[element][electron]*ratePE;
@@ -1292,7 +1292,7 @@ int phsi
 		int_junk+=EBIN*int_array[k];
 	      }
 	      /*	    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			    int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
+			    int_ans=pion_integrate(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      He_excite[element][LINE]=f_COVERING*Nion[element][electron]*int_ans;
 	      /* Add line to Seyfert 2 spectrum */
@@ -1331,7 +1331,7 @@ int phsi
 		  int_junk+=EBIN*int_array[k];
 		}
 		/*	      pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			      int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
+			      int_ans=pion_integrate(pion_integrand,1.001*Elo,0.999*Ehi);*/
 		if (1 || int_ans<0.) int_ans=int_junk;
 		strength=f_COVERING*Nion[element][electron]*int_ans;
 		/* add line to seyfert 2 like spectrum */
@@ -1425,7 +1425,7 @@ int phsi
 		int_junk+=EBIN*int_array[k];
 	      }      
 	      /*	      pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-			      int_ans=pion_qromb(pion_integrand,1.001*Elo,0.999*Ehi);*/
+			      int_ans=pion_integrate(pion_integrand,1.001*Elo,0.999*Ehi);*/
 	      if (1 || int_ans<0.) int_ans=int_junk;
 	      ratePE=int_ans;
 	      /* *Atemp/(DECAYRATE+AIRATE);
@@ -1536,7 +1536,7 @@ int phsi
 		    intMAX=100.*THRESHOLD*doppler_trans;
 		    if (intMAX>EMAX) intMAX=EMAX;
 		    /*		    pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-				    int_ans=pion_qromb(pion_integrand,intMIN,intMAX);*/
+				    int_ans=pion_integrate(pion_integrand,intMIN,intMAX);*/
 		    if (1 || int_ans<0.) int_ans=int_junk;
 		    RECNORM=int_ans;
 		    rateRR[element][electron]=ratePI[element][electron]*pion_RR_line_spline(kT)/L_REC_kT;		  
@@ -1582,7 +1582,7 @@ int phsi
 	    int_junk+=EBIN*int_array[k];
 	  }
 	  /*	  pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		  int_ans=pion_qromb(pion_integrand,1.001*THRESHOLD*doppler_rad,0.999*EMAX);*/
+		  int_ans=pion_integrate(pion_integrand,1.001*THRESHOLD*doppler_rad,0.999*EMAX);*/
 	  if (1 || int_ans<0.) int_ans=int_junk;
 	  ratePI[element][electron]=f_COVERING*Nion[element][electron]*int_ans;
 	}
@@ -1646,7 +1646,7 @@ int phsi
 	intMAX=100.*THRESHOLD*doppler_trans;
 	if (intMAX>EMAX) intMAX=EMAX;
 	/*pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		int_ans=pion_qromb(pion_integrand,1.001*EMIN,0.999*EMAX);*/
+		int_ans=pion_integrate(pion_integrand,1.001*EMIN,0.999*EMAX);*/
 	if (1 || int_ans<0.) int_ans=int_junk;
 	RECNORM=int_ans;
 	for (k=1;k<=SPECBINS;++k) {
@@ -1726,7 +1726,7 @@ int phsi
 	intMAX=100.*THRESHOLD*doppler_trans;
 	if (intMAX>EMAX) intMAX=EMAX;
 	/*	pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-		int_ans=pion_qromb(pion_integrand,intMIN,intMAX);*/
+		int_ans=pion_integrate(pion_integrand,intMIN,intMAX);*/
 	if (1 || int_ans<0.) int_ans=int_junk;
 	RECNORM=int_ans;
 	for (k=1;k<=SPECBINS;++k) {
@@ -1946,7 +1946,7 @@ int phsi
     }
   }
   pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-  int_ans=f_COVERING*pion_qromb(pion_integrand,1.0001*EMIN,0.9999*EMAX);
+  int_ans=f_COVERING*pion_integrate(pion_integrand,1.0001*EMIN,0.9999*EMAX);
   if (first==1) printf("******************************************************************\n");
   printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
   if (INPUT==0 && verbose) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));

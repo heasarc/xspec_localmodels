@@ -53,6 +53,17 @@ struct slot {
    gsl_interp_accel *acc;
 };
 
+/* The cache is never torn down. slot_clear() frees a gsl_spline and its accel
+ * only when a slot is being REPLACED, so the ~16 live splines stay allocated for
+ * the lifetime of the process -- bounded by CACHE_SLOTS, not growing with the
+ * number of model evaluations.
+ *
+ * Same policy, and same reasoning, as the workspace in photoion_integrate.c:
+ * there is no unload or atexit hook in the glue initpackage generates, XSPEC
+ * keeps a dlopen'ed package loaded for the session, and freeing per call would
+ * defeat the point of caching. Nothing here is collected; it is simply never
+ * returned, and the kernel reclaims it at process exit. dlclose() on the package
+ * is the one case that would turn this into a genuine leak. */
 static struct slot cache[CACHE_SLOTS];
 static int nslots = 0;
 

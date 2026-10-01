@@ -29,7 +29,6 @@
 #include <math.h>
 
 #include "photoion_nr_alloc.h"
-#include "photoion_nr_num.h"
 #include "photoion_spline.h"
 #include "photoion_state.h"
 #include "photoion_phys.h"
@@ -208,7 +207,7 @@ double pion_fac_PI_rate_integral(double THRESHOLD,double Labsorb[])
   khi=(int) ((double) k/2.);
   if (khi>SPECBINS) khi=SPECBINS;
   /*  pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-      int_ans=pion_qromb(pion_integrand,(1.001)*THRESHOLD*doppler_rad,E_array[khi]);*/
+      int_ans=pion_integrate(pion_integrand,(1.001)*THRESHOLD*doppler_rad,E_array[khi]);*/
   if (1 || int_ans<0.) int_ans=int_junk;
   strength=f_COVERING*int_ans;
   return strength;
