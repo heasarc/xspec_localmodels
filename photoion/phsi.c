@@ -141,7 +141,8 @@ int phsi
 
   double en,Atemp,ga;
 
-  char *IONSTR,*root,*ext,*temp,*element_name;
+  char *root,*temp,*element_name;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n,itemp,jtemp;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -216,8 +217,6 @@ int phsi
   He_recfile_name=malloc(200);
   specfile_name=malloc(200);
 
-  IONSTR=malloc(30);
-  ext=malloc(30);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   temp=malloc(130);
   sjunk=malloc(50);
@@ -845,7 +844,6 @@ int phsi
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -1663,7 +1661,7 @@ int phsi
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(H_recfile); free(H_recfile_name);
+    fclose(H_recfile);
     
     /* Heliumlike */
     if (verbose) printf("He-like...\n");
@@ -1743,7 +1741,7 @@ int phsi
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(He_recfile);  free(He_recfile_name);
+    fclose(He_recfile);
   }
 
   if (type>1 && sigmav_trans) {
@@ -1871,7 +1869,6 @@ int phsi
     fclose(l_output);
     fclose(E_specfile);
     fclose(l_specfile);
-    free(specfile_name);
   }    
 
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
@@ -2015,6 +2012,7 @@ int phsi
   pion_free_dvector(rec_spectrum_temp,1,SPECBINS);    
   pion_free_dvector(tau,1,SPECBINS);           
   pion_free_dvector(tau_exc,1,SPECBINS);           
+  pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(Labsorb,1,SPECBINS);    
   pion_free_dvector(int_array,1,SPECBINS);  
   pion_free_dvector(int_array_2,1,SPECBINS); 

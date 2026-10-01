@@ -119,7 +119,8 @@ int miabs
 
   double en,Atemp,ftemp,ga;
 
-  char *root,*element_name,*ext,*temp;
+  char *root,*element_name,*temp;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -650,7 +651,6 @@ int miabs
       }
     }
     fclose(linedat);
-    free(linedat_name);
 
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
@@ -660,7 +660,6 @@ int miabs
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -985,8 +984,13 @@ int miabs
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(element_name);
-      free(ext);*/
+  /* Both were freed inside the `if (lines)` block that used them, while the
+   * malloc at the top is unconditional, so each leaked whenever that branch was
+   * skipped -- `lines` is 0 whenever sigma_v is 0, which this model's default
+   * of 100 km/s avoids, but a user setting it to 0 does not. Freed here instead. */
+  free(linedat_name);
+  free(highnfile_name);
+  free(element_name);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
