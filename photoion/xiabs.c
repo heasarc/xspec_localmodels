@@ -6,10 +6,11 @@
 
 #include "photoion_phys.h"
 
-#include "photoion_nr_num.h"
+#include "photoion_integrate.h"
+#include "photoion_spline.h"
 #include "photoion_state.h"
 
-#include "photoion_nr_alloc.h"
+#include "photoion_alloc.h"
 
 int xiabs
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
@@ -275,9 +276,9 @@ int xiabs
     pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
 
     electron=element-k+1;
-    if (electron>=1) Nion[element][electron]=pion_qromb(pion_fion_integrand,XIMIN,XIMAX);
-    if (electron==0) N_e+=pion_qromb(pion_fion_integrand,XIMIN,XIMAX);
-    HNORM+=pion_qromb(pion_fion_integrand,XIMIN,XIMAX);
+    if (electron>=1) Nion[element][electron]=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    if (electron==0) N_e+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    HNORM+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
   }
   Nion[1][1]=Nion[1][1]*N_H/HNORM;
   N_e=N_e*N_H/HNORM;
@@ -311,10 +312,10 @@ int xiabs
 	pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
 	electron=element-k+1;
 	if (electron>=1) {
-	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_qromb(pion_fion_integrand,XIMIN,XIMAX);
+	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
 	}
 	if (electron>=1) N_e+=((double) (element-electron))*Nion[element][electron];
-	else N_e+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_qromb(pion_fion_integrand,XIMIN,XIMAX);
+	else N_e+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
       }
     }
   }
