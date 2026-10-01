@@ -115,7 +115,8 @@ int vneutral
 
   double en,Atemp,ftemp,ga;
 
-  char *root,*element_name,*ext,*temp;
+  char *root,*element_name,*temp;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -156,6 +157,24 @@ int vneutral
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("VNEUTRAL: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
   /* FILE NAMES */
   vernerphoto_name=malloc(200);
   vernerpartial_name=malloc(200);
@@ -164,7 +183,6 @@ int vneutral
 
   root=malloc(200);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
-  ext=malloc(30);
   temp=malloc(130);
   sjunk=malloc(50);
   sjunk1=malloc(50);
@@ -176,7 +194,6 @@ int vneutral
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
@@ -444,7 +461,6 @@ int vneutral
       }
     }
     fclose(linedat);
-    free(linedat_name);
 
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
@@ -454,7 +470,6 @@ int vneutral
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -776,8 +791,13 @@ int vneutral
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(element_name);
-      free(ext);*/
+  /* Both were freed inside the `if (lines)` block that used them, while the
+   * malloc at the top is unconditional, so each leaked whenever that branch was
+   * skipped -- `lines` is 0 whenever sigma_v is 0, which for this model is the
+   * default. Freed here instead. */
+  free(linedat_name);
+  free(highnfile_name);
+  free(element_name);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);

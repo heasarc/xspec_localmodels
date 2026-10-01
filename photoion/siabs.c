@@ -116,7 +116,8 @@ int siabs
 
   double en,Atemp,ftemp,ga;
 
-  char *root,*element_name,*ext,*temp;
+  char *root,*element_name,*temp;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -159,6 +160,39 @@ int siabs
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("MIABS: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
+  /* Validate the ion before allocating. These returns used to sit ~40 lines
+   * below the allocation block, so a bad ion_A or ion_z leaked everything
+   * taken so far on every evaluation -- and a fit re-enters this path each
+   * iteration. They need only param[], so they belong up here. */
+  ion_A = (int) param[0];
+  ion_z = (int) param[1];
+  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
+    printf("Selected element A = %2d not supported.\n",ion_A);
+    return 0.;
+  }
+  if (ion_z>ion_A) {
+    printf("NOTE: z > A not allowed.\n");
+    return 0.;
+  }
+
   /* FILE NAMES */
   vernerphoto_name=malloc(200);
   vernerpartial_name=malloc(200);
@@ -167,7 +201,6 @@ int siabs
 
   root=malloc(200);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
-  ext=malloc(30);
   temp=malloc(130);
   sjunk=malloc(50);
   sjunk1=malloc(50);
@@ -176,7 +209,6 @@ int siabs
   sjunk4=malloc(50);
   line=malloc(400);
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
@@ -218,14 +250,6 @@ int siabs
 
   Nion[ion_A][ion_z]=COLNORM;
 
-  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
-    printf("Selected element A = %2d not supported.\n",ion_A);
-    return 0.;
-  }
-  if (ion_z>ion_A) {
-    printf("NOTE: z > A not allowed.\n");
-    return 0.;
-  }
 
   if (LOG!=0) {
     for (i=1;i<=28;++i) {
@@ -445,7 +469,6 @@ int siabs
       }
     }
     fclose(linedat);
-    free(linedat_name);
 
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
@@ -455,7 +478,6 @@ int siabs
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -783,8 +805,13 @@ int siabs
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(element_name);
-      free(ext);*/
+  /* Both were freed inside the `if (lines)` block that used them, while the
+   * malloc at the top is unconditional, so each leaked whenever that branch was
+   * skipped -- `lines` is 0 whenever sigma_v is 0, which this model's default
+   * of 100 km/s avoids, but a user setting it to 0 does not. Freed here instead. */
+  free(linedat_name);
+  free(highnfile_name);
+  free(element_name);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);

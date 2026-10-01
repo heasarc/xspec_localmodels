@@ -143,7 +143,8 @@ int photoion
 
   double en,Atemp,ga;
 
-  char *IONSTR,*root,*ext,*temp,*element_name;
+  char *root,*temp,*element_name;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n,itemp,jtemp;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -207,6 +208,40 @@ int photoion
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+
+  /* input.qdp is not read until ~900 lines below, by which point ~90 arrays are
+   * live, around 40 of them SPECBINS-sized. The open there is checked, but it
+   * returns without freeing any of them, so a missing file leaked tens of
+   * megabytes per evaluation. Probe for it here, before anything is allocated.
+   * The message and the return value are unchanged; the later check stays as a
+   * guard. */
+  if (param[6] > 0) {
+    FILE *probe = fopen("input.qdp","r");
+    if (probe == NULL) {
+      printf("The file 'input.qdp' must exist in this directory.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("PHOTOION: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
   /* FILE NAMES */
   root=malloc(200);
   vernerphoto_name=malloc(200);
@@ -217,8 +252,6 @@ int photoion
   He_recfile_name=malloc(200);
   specfile_name=malloc(200);
 
-  IONSTR=malloc(30);
-  ext=malloc(30);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   temp=malloc(130);
   sjunk=malloc(50);
@@ -228,7 +261,6 @@ int photoion
   sjunk4=malloc(50);
   line=malloc(400);
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
@@ -894,7 +926,6 @@ int photoion
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -1712,7 +1743,7 @@ int photoion
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(H_recfile); free(H_recfile_name);
+    fclose(H_recfile);
     
     /* Heliumlike */
     if (verbose) printf("He-like...\n");
@@ -1792,7 +1823,7 @@ int photoion
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(He_recfile);  free(He_recfile_name);
+    fclose(He_recfile);
   }
 
   if (type>1 && sigmav_trans) {
@@ -1920,7 +1951,6 @@ int photoion
     fclose(l_output);
     fclose(E_specfile);
     fclose(l_specfile);
-    free(specfile_name);
   }    
 
 
@@ -2013,9 +2043,21 @@ int photoion
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(IONSTR);
-      free(ext);*/
-  if (INPUT!=0) {
+  /* These were freed inside the conditional block that used them -- `if
+   * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
+   * top is unconditional, so each leaked whenever its branch was skipped.
+   * `lines` is 0 at default parameters. Freed here instead. */
+  free(highnfile_name);
+  free(H_recfile_name);
+  free(He_recfile_name);
+  free(specfile_name);
+  free(element_name);
+  /* Guard must match the allocating branch, which is `else if (INPUT > 0)`.
+   * With `!= 0` a negative INPUT -- inside the declared parameter range -- frees
+   * five arrays it never allocated. The first evaluation survives on the zeroed
+   * globals; a later one, after an INPUT > 0 call left them dangling, aborts
+   * XSPEC on a double free. */
+  if (INPUT>0) {
     pion_free_dvector(E_input,1,INPUT_SIZE);
     pion_free_dvector(L_input,1,INPUT_SIZE);
     pion_free_dvector(L_input_2,1,INPUT_SIZE);
@@ -2067,6 +2109,7 @@ int photoion
   pion_free_dvector(rec_spectrum_temp,1,SPECBINS);    
   pion_free_dvector(tau,1,SPECBINS);           
   pion_free_dvector(tau_exc,1,SPECBINS);           
+  pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(Labsorb,1,SPECBINS);    
   pion_free_dvector(int_array,1,SPECBINS);  
   pion_free_dvector(int_array_2,1,SPECBINS); 

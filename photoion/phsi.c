@@ -141,7 +141,8 @@ int phsi
 
   double en,Atemp,ga;
 
-  char *IONSTR,*root,*ext,*temp,*element_name;
+  char *root,*temp,*element_name;
+  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n,itemp,jtemp;
   /* *.rr file */
   double p0,p1,p2,p3;
@@ -206,6 +207,55 @@ int phsi
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+
+  /* input.qdp is not read until ~900 lines below, by which point ~90 arrays are
+   * live, around 40 of them SPECBINS-sized. The open there is checked, but it
+   * returns without freeing any of them, so a missing file leaked tens of
+   * megabytes per evaluation. Probe for it here, before anything is allocated.
+   * The message and the return value are unchanged; the later check stays as a
+   * guard. */
+  if (param[10] > 0) {
+    FILE *probe = fopen("input.qdp","r");
+    if (probe == NULL) {
+      printf("The file 'input.qdp' must exist in this directory.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("PHSI: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
+  /* Validate the ion before allocating. These returns used to sit ~40 lines
+   * below the allocation block, so a bad ion_A or ion_z leaked everything
+   * taken so far on every evaluation -- and a fit re-enters this path each
+   * iteration. They need only param[], so they belong up here. */
+  ion_A = (int) param[1];
+  ion_z = (int) param[2];
+  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
+    printf("Selected element A = %2d not supported.\n",ion_A);
+    return 0.;
+  }
+  if (ion_z>ion_A) {
+    printf("NOTE: z > A not allowed.\n");
+    return 0.;
+  }
+
   /* FILE NAMES */
   root=malloc(200);
   vernerphoto_name=malloc(200);
@@ -216,8 +266,6 @@ int phsi
   He_recfile_name=malloc(200);
   specfile_name=malloc(200);
 
-  IONSTR=malloc(30);
-  ext=malloc(30);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   temp=malloc(130);
   sjunk=malloc(50);
@@ -227,7 +275,6 @@ int phsi
   sjunk4=malloc(50);
   line=malloc(400);
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
@@ -291,14 +338,6 @@ int phsi
   fileincr = (int) param[22];
   verbose =(int) param[23];
 
-  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
-    printf("Selected element A = %2d not supported.\n",ion_A);
-    return 0.;
-  }
-  if (ion_z>ion_A) {
-    printf("NOTE: z > A not allowed.\n");
-    return 0.;
-  }
 
   Nion[ion_A][ion_z]=1.;
   Tion[ion_A][ion_z]=ion_T;
@@ -845,7 +884,6 @@ int phsi
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
-    free(highnfile_name);
     for (i=1;i<=ELEMENTS;++i) {
       element=list[i];
       for (electron=1;electron<=2;++electron) {
@@ -1663,7 +1701,7 @@ int phsi
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(H_recfile); free(H_recfile_name);
+    fclose(H_recfile);
     
     /* Heliumlike */
     if (verbose) printf("He-like...\n");
@@ -1743,7 +1781,7 @@ int phsi
 	EM[element][electron]=1.2/ABUND[element]*EMion[element][electron];
       }
     }
-    fclose(He_recfile);  free(He_recfile_name);
+    fclose(He_recfile);
   }
 
   if (type>1 && sigmav_trans) {
@@ -1871,7 +1909,6 @@ int phsi
     fclose(l_output);
     fclose(E_specfile);
     fclose(l_specfile);
-    free(specfile_name);
   }    
 
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
@@ -1961,9 +1998,21 @@ int phsi
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(IONSTR);
-      free(ext);*/
-  if (INPUT!=0) {
+  /* These were freed inside the conditional block that used them -- `if
+   * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
+   * top is unconditional, so each leaked whenever its branch was skipped.
+   * `lines` is 0 at default parameters. Freed here instead. */
+  free(highnfile_name);
+  free(H_recfile_name);
+  free(He_recfile_name);
+  free(specfile_name);
+  free(element_name);
+  /* Guard must match the allocating branch, which is `else if (INPUT > 0)`.
+   * With `!= 0` a negative INPUT -- inside the declared parameter range -- frees
+   * five arrays it never allocated. The first evaluation survives on the zeroed
+   * globals; a later one, after an INPUT > 0 call left them dangling, aborts
+   * XSPEC on a double free. */
+  if (INPUT>0) {
     pion_free_dvector(E_input,1,INPUT_SIZE);
     pion_free_dvector(L_input,1,INPUT_SIZE);
     pion_free_dvector(L_input_2,1,INPUT_SIZE);
@@ -2015,6 +2064,7 @@ int phsi
   pion_free_dvector(rec_spectrum_temp,1,SPECBINS);    
   pion_free_dvector(tau,1,SPECBINS);           
   pion_free_dvector(tau_exc,1,SPECBINS);           
+  pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(Labsorb,1,SPECBINS);    
   pion_free_dvector(int_array,1,SPECBINS);  
   pion_free_dvector(int_array_2,1,SPECBINS); 

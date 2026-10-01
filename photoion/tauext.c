@@ -137,6 +137,7 @@ int tauext
   pion_free_dvector(E_array,1,SPECBINS);
   pion_free_dvector(E_bin,1,SPECBINS);
   pion_free_dvector(E_spectrum,1,SPECBINS);
+  free(line);
 
   return 0;
 }
