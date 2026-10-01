@@ -159,6 +159,36 @@ int xiabs
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("XIABS: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
+  /* xi.dat is read a few hundred lines below, after the allocation block; the
+   * open there is checked but returns without freeing. Probe here instead. */
+  {
+    FILE *probe = fopen("xi.dat","r");
+    if (probe == NULL) {
+      printf("The file 'xi.dat' must exist in this directory.\n");
+      printf("See $DATADIR/photoion_dat/xi.dat for an example.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
   /* FILE NAMES */
   vernerphoto_name=malloc(200);
   vernerpartial_name=malloc(200);
@@ -167,7 +197,6 @@ int xiabs
 
   root=malloc(200);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
-  ext=malloc(30);
   temp=malloc(130);
   sjunk=malloc(50);
   sjunk1=malloc(50);
@@ -179,7 +208,6 @@ int xiabs
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;

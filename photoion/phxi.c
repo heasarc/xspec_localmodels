@@ -204,6 +204,52 @@ int phxi
   /* Initialize the model array */
   for (i=0;i<ne;++i) photar[i] = 0.;
 
+
+  /* input.qdp is not read until ~900 lines below, by which point ~90 arrays are
+   * live, around 40 of them SPECBINS-sized. The open there is checked, but it
+   * returns without freeing any of them, so a missing file leaked tens of
+   * megabytes per evaluation. Probe for it here, before anything is allocated.
+   * The message and the return value are unchanged; the later check stays as a
+   * guard. */
+  if (param[20] > 0) {
+    FILE *probe = fopen("input.qdp","r");
+    if (probe == NULL) {
+      printf("The file 'input.qdp' must exist in this directory.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("PHXI: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
+  /* xi.dat is read a few hundred lines below, after the allocation block; the
+   * open there is checked but returns without freeing. Probe here instead. */
+  {
+    FILE *probe = fopen("xi.dat","r");
+    if (probe == NULL) {
+      printf("The file 'xi.dat' must exist in this directory.\n");
+      printf("See $DATADIR/photoion_dat/xi.dat for an example.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
   /* FILE NAMES */
   root=malloc(200);
   vernerphoto_name=malloc(200);
@@ -232,7 +278,6 @@ int phxi
   rateDR=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) {Nion[i][j]=0.;Tion[i][j]=10.;EMion[i][j]=0.;EM[i][j]=0.;ratePI[i][j]=0.;rateRR[i][j]=0.;rateDR[i][j]=0.;}
 
-  DATADIR=FGMSTR(name);
 
   sprintf(temp,"%s/photoion_dat/temperature.dat",DATADIR);
   input=fopen(temp,"r");

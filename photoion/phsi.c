@@ -207,6 +207,55 @@ int phsi
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
+
+  /* input.qdp is not read until ~900 lines below, by which point ~90 arrays are
+   * live, around 40 of them SPECBINS-sized. The open there is checked, but it
+   * returns without freeing any of them, so a missing file leaked tens of
+   * megabytes per evaluation. Probe for it here, before anything is allocated.
+   * The message and the return value are unchanged; the later check stays as a
+   * guard. */
+  if (param[10] > 0) {
+    FILE *probe = fopen("input.qdp","r");
+    if (probe == NULL) {
+      printf("The file 'input.qdp' must exist in this directory.\n");
+      return 0;
+    }
+    fclose(probe);
+  }
+
+  DATADIR=FGMSTR(name);
+
+  /* Probe for the atomic data before anything is allocated. The open below
+   * is checked, but it returns with ~15 allocations already live, and this
+   * path is re-entered on every evaluation of a misconfigured model. Message
+   * and return value are unchanged; the check below stays as a guard. */
+  {
+    char probepath[1024];
+    FILE *probe;
+    snprintf(probepath,sizeof probepath,"%s/photoion_dat/abundance.dat",DATADIR);
+    probe=fopen(probepath,"r");
+    if (probe == NULL) {
+      printf("PHSI: Failed to open %s\n", probepath);
+      return 1;
+    }
+    fclose(probe);
+  }
+
+  /* Validate the ion before allocating. These returns used to sit ~40 lines
+   * below the allocation block, so a bad ion_A or ion_z leaked everything
+   * taken so far on every evaluation -- and a fit re-enters this path each
+   * iteration. They need only param[], so they belong up here. */
+  ion_A = (int) param[1];
+  ion_z = (int) param[2];
+  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
+    printf("Selected element A = %2d not supported.\n",ion_A);
+    return 0.;
+  }
+  if (ion_z>ion_A) {
+    printf("NOTE: z > A not allowed.\n");
+    return 0.;
+  }
+
   /* FILE NAMES */
   root=malloc(200);
   vernerphoto_name=malloc(200);
@@ -226,7 +275,6 @@ int phsi
   sjunk4=malloc(50);
   line=malloc(400);
 
-  DATADIR=FGMSTR(name);
 
   ABUND=pion_dvector(1,30);
   for (i=1;i<=30;++i) ABUND[i]=0.;
@@ -290,14 +338,6 @@ int phsi
   fileincr = (int) param[22];
   verbose =(int) param[23];
 
-  if (!(ion_A == 1 || ion_A == 2 || ion_A == 6 || ion_A == 7 || ion_A == 8 || ion_A == 10 || ion_A == 12 || ion_A == 13 || ion_A == 14 || ion_A == 16 || ion_A == 18 || ion_A == 20 || ion_A == 26 || ion_A == 28)) {
-    printf("Selected element A = %2d not supported.\n",ion_A);
-    return 0.;
-  }
-  if (ion_z>ion_A) {
-    printf("NOTE: z > A not allowed.\n");
-    return 0.;
-  }
 
   Nion[ion_A][ion_z]=1.;
   Tion[ion_A][ion_z]=ion_T;
