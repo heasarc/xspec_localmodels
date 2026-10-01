@@ -1998,9 +1998,21 @@ int phsi
   free(sjunk3);
   free(sjunk4);
   free(line);
-  /*  free(IONSTR);
-      free(ext);*/
-  if (INPUT!=0) {
+  /* These were freed inside the conditional block that used them -- `if
+   * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
+   * top is unconditional, so each leaked whenever its branch was skipped.
+   * `lines` is 0 at default parameters. Freed here instead. */
+  free(highnfile_name);
+  free(H_recfile_name);
+  free(He_recfile_name);
+  free(specfile_name);
+  free(element_name);
+  /* Guard must match the allocating branch, which is `else if (INPUT > 0)`.
+   * With `!= 0` a negative INPUT -- inside the declared parameter range -- frees
+   * five arrays it never allocated. The first evaluation survives on the zeroed
+   * globals; a later one, after an INPUT > 0 call left them dangling, aborts
+   * XSPEC on a double free. */
+  if (INPUT>0) {
     pion_free_dvector(E_input,1,INPUT_SIZE);
     pion_free_dvector(L_input,1,INPUT_SIZE);
     pion_free_dvector(L_input_2,1,INPUT_SIZE);
