@@ -497,7 +497,20 @@ double pion_vernerph(struct VERNER_STRUCT verner, double E)
 double pion_voigt(double alpha,double v)
 {
   int i;
-  double *a,*b,*c;
+  /* Unit-offset coefficient tables; element 0 is unused. These were three
+   * pion_dvector(1,7) allocated and freed on every call, which made calloc/free
+   * a measurable share of line-opacity time. Fixed tables give the same values. */
+  static const double a[8]={0.,
+    122.607931777104326, 214.382388694706425, 181.928533092181549,
+    93.155580458134410, 30.180142196210589, 5.912626209773153,
+    0.564189583562615};
+  static const double b[8]={0.,
+    122.607931773875350, 352.730625110963558, 457.334478783897737,
+    348.703917719495792, 170.354001821091472, 53.992906912940207,
+    10.479857114260399};
+  static const double c[8]={0.,
+    0.5641641, 0.8718681, 1.474395, -19.57862, 802.4513, -4850.316,
+    8031.468};
   double v2,v3,fac1,fac2;
   double p1,p2,p3,p4,p5,p6,p7;
   double o1,o2,o3,o4,o5,o6,o7;
@@ -505,34 +518,6 @@ double pion_voigt(double alpha,double v)
   double r1,r2;
   double H;
  
-  a=pion_dvector(1,7);
-  b=pion_dvector(1,7);
-  c=pion_dvector(1,7);
-
-  a[1]=122.607931777104326;
-  a[2]=214.382388694706425;
-  a[3]=181.928533092181549;
-  a[4]=93.155580458134410;
-  a[5]=30.180142196210589;   
-  a[6]=5.912626209773153;
-  a[7]=0.564189583562615;
-
-  b[1]=122.607931773875350;
-  b[2]=352.730625110963558;
-  b[3]=457.334478783897737;
-  b[4]=348.703917719495792;
-  b[5]=170.354001821091472;
-  b[6]=53.992906912940207;
-  b[7]=10.479857114260399;
-  
-  c[1]=0.5641641;
-  c[2]=0.8718681;
-  c[3]=1.474395;
-  c[4]=-19.57862;
-  c[5]=802.4513;
-  c[6]=-4850.316;
-  c[7]=8031.468;
-  
   if (alpha <= .001 && v >= 2.5) {
     v2   = v * v;
     v3   = 1.0;
@@ -575,10 +560,6 @@ double pion_voigt(double alpha,double v)
     H = (q1 * q2 + r1 * r2) / (q2 * q2 + r2 * r2);
   }
 
-  pion_free_dvector(a,1,7);
-  pion_free_dvector(b,1,7);
-  pion_free_dvector(c,1,7);
-  
   return H;
 }
 
