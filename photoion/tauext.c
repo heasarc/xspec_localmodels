@@ -82,8 +82,8 @@ int tauext
       bin=2.*bin;
     }
     else if (E_or_l == 1) {
-      bin=HC_KEV_ANGSTROM_1998*(1./(energy_or_lambda-bin)-1./(energy_or_lambda+bin)); /* convert from A to keV */
-      energy=HC_KEV_ANGSTROM_1998/energy_or_lambda;
+      bin=HC_KEV_ANGSTROM*(1./(energy_or_lambda-bin)-1./(energy_or_lambda+bin)); /* convert from A to keV */
+      energy=HC_KEV_ANGSTROM/energy_or_lambda;
     }
 
     E_array[j]=1000.*energy;

@@ -748,7 +748,7 @@ int photoion
   }
   for (k=1;k<=SPECBINS;++k) {
     E_array[k]=((double) k-0.5)*EBIN+EMIN;
-    l_array[k]=HC_KEV_ANGSTROM_1998/(E_array[k]/1000.);  /* [Angstrom] */
+    l_array[k]=HC_KEV_ANGSTROM/(E_array[k]/1000.);  /* [Angstrom] */
   }
 
   /* for velocity convolution out to >= 4 sigma */
@@ -859,7 +859,7 @@ int photoion
       hydrogen[element].A[LINE]=AMtemp;
       hydrogen[element].f[LINE]=fMtemp;
       if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	E0=1000.*HC_KEV_ANGSTROM_1998/hydrogen[element].lambda[LINE];
+	E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	E0=E0*doppler_rad;
 	OSCILLATOR=hydrogen[element].f[LINE];
 	g_j=leveldeg[electron][LINE];
@@ -875,7 +875,7 @@ int photoion
       helium[element].A[LINE]=AMtemp;
       helium[element].f[LINE]=fMtemp;
       if (Nion[element][electron] && fMtemp && LINE <= 6) {
-	E0=1000.*HC_KEV_ANGSTROM_1998/helium[element].lambda[LINE];
+	E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	E0=E0*doppler_rad;
 	OSCILLATOR=helium[element].f[LINE];
 	g_j=leveldeg[electron][LINE];
@@ -896,7 +896,7 @@ int photoion
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
     highnfile=fopen(highnfile_name,"r");
     while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM_1998/Etemp*1000.;
+      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
@@ -909,11 +909,11 @@ int photoion
 	  for (n=6;n<=HIGHN;++n) {
 	    OSCILLATOR=oscillatornorm/cube((double) n);
 	    if (element!=28) {
-	      E0=HC_KEV_ANGSTROM_1998/highn[element][electron].lambda[n]*1000.;
+	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	    } else if (electron==1) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM_1998/(highn[26][electron].lambda[n]/1.1614)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
 	    } else if (electron==2) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM_1998/(highn[26][electron].lambda[n]/1.165)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
 	    }
 	    E0=E0*doppler_rad;
 	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1299,7 +1299,7 @@ int photoion
 	  for (LINE=1;LINE<=4;++LINE) {
 	    OSCILLATOR=hydrogen[element].f[LINE];
 	    if (OSCILLATOR) {
-	      E0=1000.*HC_KEV_ANGSTROM_1998/hydrogen[element].lambda[LINE];
+	      E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	      E0=E0*doppler_rad;
 	      ga=hydrogen[element].A[LINE]/*leveldeg[electron][LINE]/(3.*grounddeg[electron]*hydrogen[element].f[LINE])*/;
 	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1334,7 +1334,7 @@ int photoion
 	  for (LINE=3;LINE<=6;++LINE) {
 	    OSCILLATOR=helium[element].f[LINE];
 	    if (OSCILLATOR) {
-	      E0=1000.*HC_KEV_ANGSTROM_1998/helium[element].lambda[LINE];
+	      E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	      E0=E0*doppler_rad;
 	      ga=helium[element].A[LINE]/*leveldeg[electron][LINE]/(3.*grounddeg[electron]*helium[element].f[LINE])*/;
 	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1371,7 +1371,7 @@ int photoion
 	    if (electron==2) oscillatornorm=oshe[element]; /* defined above */
 	    for (n=6;n<=HIGHN;++n) {
 	      OSCILLATOR=oscillatornorm/cube((double) n);
-	      E0=HC_KEV_ANGSTROM_1998/highn[element][electron].lambda[n]*1000.;
+	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	      E0=E0*doppler_rad;
 	      if (E0>=EMIN && E0<=EMAX) {
 		DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1675,7 +1675,7 @@ int photoion
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	  E0=HC_KEV_ANGSTROM_1998/hydrogen[element].lambda[LINE]*1000.;
+	  E0=HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
 	  if ((E0-EMIN+0.5*EBIN)/EBIN-(double) k >= 0.5) ++k;
@@ -1686,7 +1686,7 @@ int photoion
 	for (k=1;k<=TEMPERATURES;++k) Yvec[k]=log10(H_rec[element].rrc[k]);
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	E0=HC_KEV_ANGSTROM_1998/hydrogen[element].lambda[6/*rrc*/]*1000.;
+	E0=HC_KEV_ANGSTROM/hydrogen[element].lambda[6/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
@@ -1753,7 +1753,7 @@ int photoion
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	  E0=HC_KEV_ANGSTROM_1998/helium[element].lambda[LINE]*1000.;
+	  E0=HC_KEV_ANGSTROM/helium[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
 	  if ((E0-EMIN+0.5*EBIN)/EBIN-(double) k >= 0.5) ++k;
@@ -1766,7 +1766,7 @@ int photoion
 	}
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	E0=HC_KEV_ANGSTROM_1998/helium[element].lambda[9/*rrc*/]*1000.;
+	E0=HC_KEV_ANGSTROM/helium[element].lambda[9/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
@@ -1902,7 +1902,7 @@ int photoion
     exc_spectrum[k]=exc_spectrum[k]/4./PI/sqr(D)/(1.+redshift);
     specRR[k]=specRR[k]/4./PI/sqr(D)/(1.+redshift);
     specDR[k]=specDR[k]/4./PI/sqr(D)/(1.+redshift);
-    convert[k]=(hhh*ccc*ergstoeV)/(sqr(l_array[k]))*1.e8;
+    convert[k]=(1.e3*HC_KEV_ANGSTROM)/(sqr(l_array[k]));
     l_spectrum[k]=E_spectrum[k]*convert[k];
     if (fileincr >= 0) {
       if (INPUT==0) {
@@ -1955,7 +1955,7 @@ int photoion
       if (earhi-Elo<EBIN) Ewidth=earhi-Elo;
       else Ewidth=EBIN;
     }
-    if (type==-1) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.*sqr(l_array[j])/HC_KEV_ANGSTROM_1998;/* ph/cm^2/s in bin */
+    if (type==-1) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.*sqr(l_array[j])/HC_KEV_ANGSTROM;/* ph/cm^2/s in bin */
     else if (type==0) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.;/* ph/cm^2/s in bin */
     else photar[i]+=Ewidth*E_spectrum[j]*(1.+redshift);/* ph/cm^2/s in bin */
     if (earhi<Ehi) {

@@ -412,7 +412,7 @@ int siabs
 	hydrogen[element].A[LINE]=AMtemp;
 	hydrogen[element].f[LINE]=fMtemp;
 	if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	  E0=1000.*HC_KEV_ANGSTROM_1986/hydrogen[element].lambda[LINE];
+	  E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	  E0=E0*doppler_rad;
 	  OSCILLATOR=hydrogen[element].f[LINE];
 	  g_j=leveldeg[electron][LINE];
@@ -428,7 +428,7 @@ int siabs
 	helium[element].A[LINE]=AMtemp;
 	helium[element].f[LINE]=fMtemp;
 	if (Nion[element][electron] && fMtemp  && LINE <= 6) {
-	  E0=1000.*HC_KEV_ANGSTROM_1986/helium[element].lambda[LINE];
+	  E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	  E0=E0*doppler_rad;
 	  OSCILLATOR=helium[element].f[LINE];
 	  g_j=leveldeg[electron][LINE];
@@ -447,7 +447,7 @@ int siabs
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
     highnfile=fopen(highnfile_name,"r");
     while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM_1986/Etemp*1000.;
+      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
@@ -460,13 +460,13 @@ int siabs
 	  for (n=6;n<=HIGHN;++n) {
 	    OSCILLATOR=oscillatornorm/cube((double) n);
 	    if (element!=28) {
-	      E0=HC_KEV_ANGSTROM_1986/highn[element][electron].lambda[n]*1000.;
+	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	    } else {
 	      if (electron==1) {/* Use Fe numbers for Ni */
-		E0=HC_KEV_ANGSTROM_1986/(highn[26][electron].lambda[n]/1.1614)*1000.;
+		E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
 	      }  
 	      if (electron==2) {/* Use Fe numbers for Ni */
-		E0=HC_KEV_ANGSTROM_1986/(highn[26][electron].lambda[n]/1.165)*1000.;
+		E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
 	      }
 	    }
 	    E0=E0*doppler_rad;
