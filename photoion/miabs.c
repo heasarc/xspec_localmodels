@@ -57,7 +57,7 @@ int miabs
     double A[8];
     double b[8]; /* branching ratios? */
   };
-  struct HYDROGEN_STRUCT hydrogen[27];
+  struct HYDROGEN_STRUCT hydrogen[29];
   
   struct HELIUM_STRUCT {
     double lambda[11];
@@ -65,7 +65,7 @@ int miabs
     double A[11];
     double b[11]; /* branching ratios? */
   };
-  struct HELIUM_STRUCT helium[27];
+  struct HELIUM_STRUCT helium[29];
   
   struct HIGHER_ORDER_STRUCT {
     double lambda[101];
