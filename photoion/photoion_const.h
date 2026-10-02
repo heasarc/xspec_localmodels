@@ -40,7 +40,7 @@
 
 /* hc in keV Angstrom, i.e. E[keV] = HC_KEV_ANGSTROM/lambda[Angstrom]. Since
  * the 2019 SI, h, c and e are all exact, so this is exact too. */
-#define HC_KEV_ANGSTROM (hhh*ccc/eVtoergs*1.e5)
+#define HC_KEV_ANGSTROM (hhh*ccc*ergstoeV*1.e5)
 
 /* sqrt(pi) m_e c/(pi e^2) = 1/(sqrt(pi) re c) [s/cm^2]. Used only in a
  * tau_lim cutoff test on line-centre optical depth. */
@@ -52,7 +52,7 @@
 
 /* Parsec [cm]: exactly 648000/pi au (IAU 2015 Resolution B2), with
  * 1 au = 149597870700 m exactly (IAU 2012 Resolution B2). */
-#define parsectocm (648000./PI*1.495978707e13)
+#define parsectocm ((648000./PI)*1.495978707e13)
 
 /* There is deliberately no Hubble constant here. H0 and lambda0 are the
  * user's choice, read from XSPEC's cosmo setting by pion_cosmology(). */
