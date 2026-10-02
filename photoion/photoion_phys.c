@@ -32,24 +32,10 @@
 #include "photoion_spline.h"
 #include "photoion_state.h"
 #include "photoion_phys.h"
+#include "photoion_const.h"
 
-#define PI (3.141592653589793)
-#define ccc (2.99792458e10)         /* speed of light [cm/s] */
-#define hhh (6.6260755e-27)         /* Planck's constant [cgs] */
-#define eVtoergs (1.60217733e-12)   /* convert eV to ergs */
-#define ergstoeV (1./eVtoergs)      /* convert ergs to eV */
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
-#define a0 (5.29177249e-9)          /* Bohr radius [cm] */
-#define re (2.81794092e-13)         /* classical electron radius: e^2/m c^2 */
-#define ge (2.)                     /* gyromagnetic ratio for the electron */
-#define meeV (5.1099906e5)          /* electron mass [eV] */
-#define eVtoHartree (1./(2.*13.6056981))
-#define H_0 (2.301e-18) /* Hubble constant [1/s]: (WMAP h = 71) 71*1e5/3.085678e18/1e6*/
-#define FINE_STRUCTURE (1./137.0359895)
-#define AngstromtokeV (12.39841856)    /* Angstrom=12.39841856/E_keV */
-#define parsectocm (3.085678e18)  /* parsecs to cm */
-#define sigmaT (6.6525e-25)    /* Thomson cross-section [cm^2]: 8*Pi/3*re^2 */
 #define cube(X) ((X)*(X)*(X))
 
 double pion_DR_line_spline(double temp)
