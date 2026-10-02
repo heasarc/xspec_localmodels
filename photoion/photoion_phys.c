@@ -346,15 +346,6 @@ double pion_lowEpispline(double E)
   return pow(10.,answer);
 }
 
-double pion_lowErrspline(double E)
-{
-  double answer;
-  
-  E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_RRGRID,LOWE_RRGRID_2,LOWE_GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
-
 double pion_maxwell(double Te, double kT, double NORM)
 {
   double answer;
@@ -387,15 +378,6 @@ double pion_rrsigma(double g_i, double g_j, double p0, double p1, double p2, dou
   E=Te+THRESHOLD;
   answer=sqr(FINE_STRUCTURE)/2.*g_i/g_j*(sqr(E)/Te*(eVtoHartree))*pion_pisigma(g_i,p0,p1,p2,p3,E);
   return answer;
-}
-
-double pion_rrspline(double E)
-{
-  double answer;
-
-  E=log10(E);
-  pion_splint(EGRID,RRGRID,RRGRID_2,GRIDNUM,E,&answer);
-  return pow(10.,answer);
 }
 
 void pion_verner_full_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]) 

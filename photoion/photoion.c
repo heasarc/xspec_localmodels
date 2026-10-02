@@ -666,14 +666,10 @@ int photoion
   EGRID=pion_dvector(1,GRIDNUM);  
   PIGRID=pion_dvector(1,GRIDNUM); 
   PIGRID_2=pion_dvector(1,GRIDNUM);
-  RRGRID=pion_dvector(1,GRIDNUM);  
-  RRGRID_2=pion_dvector(1,GRIDNUM);
 
   LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
   LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
   LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
-  LOWE_RRGRID=pion_dvector(1,LOWE_GRIDNUM); 
-  LOWE_RRGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
   specRR=pion_dvector(1,SPECBINS);  
   specDR=pion_dvector(1,SPECBINS);  
@@ -1569,24 +1565,17 @@ int photoion
 		g_j=g_j+1.;
 		fscanf(input2,"%lf%lf%lf%lf",&p0,&p1,&p2,&p3);
 		for (k=1;k<=LOWE_GRIDNUM;++k) {
-		  fscanf(input2,"%lf%lf%lf%lf",&(LOWE_EGRID[k]),&(LOWE_RRGRID[k]),&djunk,&djunk);
+		  fscanf(input2,"%lf%lf%lf%lf",&(LOWE_EGRID[k]),&djunk,&djunk,&djunk);
 		  LOWE_EGRID[k]=log10(LOWE_EGRID[k]/doppler_trans);
-		  LOWE_RRGRID[k]=log10(1.e-20*LOWE_RRGRID[k]);
 		}
 		
 		if (i==itemp && j==jtemp) {
-		  pion_spline(LOWE_EGRID,LOWE_RRGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_RRGRID_2);	  
 		  /*		  printf("%5d %5d  %5d %5d  %e\n",i,itemp,j,jtemp,pion_rrsigma(g_i,g_j,p0,p1,p2,p3,THRESHOLD)); */
 		  if (THRESHOLD>=EMIN/doppler_trans && THRESHOLD<=EMAX/doppler_trans) {
-		    for (k=1;k<=GRIDNUM;++k) RRGRID[k]=1.e-90;
-		    for (k=1;k<=GRIDNUM;++k) {
-		      Etemp=EGRID[k];
-		      if (Etemp<log10(THRESHOLD)) RRGRID[k]=1.e-90;
-		      else if (Etemp>=log10(THRESHOLD) && Etemp<=LOWE_EGRID[LOWE_GRIDNUM]) RRGRID[k]=pion_lowEpispline(pow(10.,Etemp));
-		      else RRGRID[k]=pion_rrsigma(g_i,g_j,p0,p1,p2,p3,pow(10.,Etemp)-THRESHOLD/* electron energy */);
-		    }
-		    for (k=1;k<=GRIDNUM;++k) RRGRID[k]=log10(RRGRID[k]);
-		    pion_spline(EGRID,RRGRID,GRIDNUM,1.e40,1.e40,RRGRID_2);
+		    /* A 20000-point RRGRID and a 6-point LOWE_RRGRID spline used to be built
+		       here. Nothing read either (pion_rrspline and pion_lowErrspline had no
+		       callers), so both were removed. The LOWE_EGRID read above is kept: it
+		       still sets that shared array. */
 		    int_junk=0.;
 		    for (k=1;k<=SPECBINS;++k) {
 		      int_array[k]=pion_fac_recombination(g_i,g_j,p0,p1,p2,p3,kT,E_array[k]/doppler_trans-THRESHOLD);
@@ -2051,8 +2040,6 @@ int photoion
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
-  pion_free_dvector(LOWE_RRGRID,1,LOWE_GRIDNUM); 
-  pion_free_dvector(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
   pion_free_dvector(specRR,1,SPECBINS);  
   pion_free_dvector(specDR,1,SPECBINS);  
   pion_free_dvector(specRR_temp,1,SPECBINS);  
@@ -2111,8 +2098,6 @@ int photoion
   pion_free_dvector(EGRID,1,GRIDNUM);  
   pion_free_dvector(PIGRID,1,GRIDNUM); 
   pion_free_dvector(PIGRID_2,1,GRIDNUM);
-  pion_free_dvector(RRGRID,1,GRIDNUM);  
-  pion_free_dvector(RRGRID_2,1,GRIDNUM);
   
   if (verbose) printf("Done!\n");
   
