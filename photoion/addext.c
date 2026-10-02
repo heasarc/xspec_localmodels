@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "photoion_phys.h"
+#include "photoion_const.h"
 
 
 #include "photoion_alloc.h"
@@ -15,8 +16,6 @@ int addext
 
 FCALLSCSUB6(addext,ADDEXT,addext,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
-#define ccc (2.99792458e10)         /* speed of light [cm/s] */
-#define lambdatokeV (12.39841856)    /* lambda=12.39841856/E_keV */
 
 /* 
 Reads in file either in energy (E_or_l = 0) or wavelength (E_or_l = 1) units.  
@@ -84,8 +83,8 @@ int addext
     }
     else if (E_or_l == 1) {
       spectrum=spectrum*(2.*bin); /* convert to photons/cm^2/s/bin */
-      bin=lambdatokeV*(1./(energy_or_lambda-bin)-1./(energy_or_lambda+bin)); /* convert from A to keV */
-      energy=lambdatokeV/energy_or_lambda;
+      bin=HC_KEV_ANGSTROM*(1./(energy_or_lambda-bin)-1./(energy_or_lambda+bin)); /* convert from A to keV */
+      energy=HC_KEV_ANGSTROM/energy_or_lambda;
     }
 
     E_array[j]=1000.*energy;

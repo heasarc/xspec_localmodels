@@ -32,24 +32,10 @@
 #include "photoion_spline.h"
 #include "photoion_state.h"
 #include "photoion_phys.h"
+#include "photoion_const.h"
 
-#define PI (3.141592653589793)
-#define ccc (2.99792458e10)         /* speed of light [cm/s] */
-#define hhh (6.6260755e-27)         /* Planck's constant [cgs] */
-#define eVtoergs (1.60217733e-12)   /* convert eV to ergs */
-#define ergstoeV (1./eVtoergs)      /* convert ergs to eV */
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
-#define a0 (5.29177249e-9)          /* Bohr radius [cm] */
-#define re (2.81794092e-13)         /* classical electron radius: e^2/m c^2 */
-#define ge (2.)                     /* gyromagnetic ratio for the electron */
-#define meeV (5.1099906e5)          /* electron mass [eV] */
-#define eVtoHartree (1./(2.*13.6056981))
-#define H_0 (2.301e-18) /* Hubble constant [1/s]: (WMAP h = 71) 71*1e5/3.085678e18/1e6*/
-#define FINE_STRUCTURE (1./137.0359895)
-#define AngstromtokeV (12.39841856)    /* Angstrom=12.39841856/E_keV */
-#define parsectocm (3.085678e18)  /* parsecs to cm */
-#define sigmaT (6.6525e-25)    /* Thomson cross-section [cm^2]: 8*Pi/3*re^2 */
 #define cube(X) ((X)*(X)*(X))
 
 double pion_DR_line_spline(double temp)
@@ -292,12 +278,39 @@ double pion_gauss(double s,double x)
   return answer;
 }
 
-double pion_hubble_integrand(double z /* redshift */) /* Peacock, Eq. 3.39, p. 76 */
+/* XSPEC's cosmology, as set by its "cosmo" command (libXSFunctions, the
+ * library that also provides FGMSTR). H0 is in km/s/Mpc. */
+float csmgh0(void);
+float csmgl0(void);
+
+/* Read XSPEC's cosmology for the Hubble-law distance. The universe is taken
+ * to be flat, Omega_m = 1 - lambda0, which is also how XSPEC itself treats a
+ * non-zero lambda0; q0 is not used. lambda0 = 0 is therefore Einstein-de
+ * Sitter. lambda0 >= 1 would leave Omega_m <= 0 and the integrand undefined,
+ * so it is refused, as is H0 <= 0. Returns 0 on success. */
+int pion_cosmology(double *H0, double *Omega_m)
+{
+  double h0=csmgh0(), lambda0=csmgl0();
+  if (!(h0 > 0.) || !(lambda0 < 1.)) {
+    printf("PHOTOION: cannot use the cosmology H0 = %g, lambda0 = %g for the "
+           "Hubble-law distance (D = 0). This model needs H0 > 0 and "
+           "lambda0 < 1, because it takes the universe to be flat with "
+           "Omega_m = 1 - lambda0. Set it with XSPEC's cosmo command, or give "
+           "a distance D.\n", h0, lambda0);
+    return 1;
+  }
+  *H0=h0;
+  *Omega_m=1.-lambda0;
+  return 0;
+}
+
+/* Comoving distance integrand c/H(z) [cm] for a flat universe; H0 in
+ * km/s/Mpc. Peacock, Eq. 3.39, p. 76 */
+double pion_hubble_integrand(double z /* redshift */, double H0, double Omega_m)
 {
   double answer;
-  double Omega_m=0.27,Omega_lambda;
-  Omega_lambda=1.-Omega_m;
-  answer=ccc/H_0/sqrt(Omega_m*cube(1.+z)+Omega_lambda);
+  double H0_per_s=H0*1.e5/(1.e6*parsectocm);
+  answer=ccc/H0_per_s/sqrt(Omega_m*cube(1.+z)+(1.-Omega_m));
   return answer;
 }
 

@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photoion_phys.h"
+#include "photoion_const.h"
 
 #include "photoion_integrate.h"
 #include "photoion_spline.h"
@@ -19,35 +20,6 @@ FCALLSCSUB6(xiabs,XIABS,xiabs,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 #define sqr(X) ((X)*(X))
 #define cube(X) ((X)*(X)*(X))
-#define SMALL (1.e-6)
-#define FINE_STRUCTURE (1./137.0359895)
-#define eVtoHartree (1./(2.*13.6056981))
-#define Rydberg (13.6056981)        /* 1 Rydberg [eV] */
-#define a0 (5.29177249e-9)          /* Bohr radius [cm] */
-#define ccc (2.99792458e10)         /* speed of light [cm/s] */
-#define eee (4.8032068e-10)         /* electron charge [esu] */
-#define hhh (6.6260755e-27)         /* Planck's constant [cgs] */
-#define H_0 (2.301e-18) /* Hubble constant [1/s]: (WMAP h = 71) 71*1e5/3.085678e18/1e6*/
-#define me (9.1093897e-28)          /* electron mass [g] */
-#define re (2.81794092e-13)         /* classical electron radius: e^2/m c^2 */
-#define ge (2.)                     /* gyromagnetic ratio for the electron */
-#define meeV (5.1099906e5)          /* electron mass [eV] */
-#define sigmaT (6.6525e-25)    /* Thomson cross-section [cm^2]: 8*Pi/3*re^2 */
-#define eVtoergs (1.60217733e-12)   /* convert eV to ergs */
-#define ergstoeV (1./eVtoergs)      /* convert ergs to eV */
-#define AMconv (4.13413733134e16)   /* convert Einstein A_ij A.U.'s -> s^-1 */
-#define lambdatokeV (12.3984244)    /* lambda=12.3984244/E_keV */
-#define FACTOR (66.784)     /* For calculating line center optical depth */
-#define parsectocm (3.085678e18)  /* parsecs to cm */
-#define TEMPERATURES (30)
-#define SMALL (1.e-6)
-#define EPS 1.0e-5
-#define JMAX 22
-#define JMAXP JMAX+1
-#define K 5
-#define FUNC_xi(x) ((*func)(x))
-#define SWAP_xi(a,b) {double temp=(a);(a)=(b);(b)=temp;}
-#define PI (3.141592653589793)
 
 /* START */
 
@@ -547,7 +519,7 @@ int xiabs
 	hydrogen[element].A[LINE]=AMtemp;
 	hydrogen[element].f[LINE]=fMtemp;
 	if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	  E0=1000.*lambdatokeV/hydrogen[element].lambda[LINE];
+	  E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	  E0=E0*doppler_rad;
 	  OSCILLATOR=hydrogen[element].f[LINE];
 	  g_j=leveldeg[electron][LINE];
@@ -563,7 +535,7 @@ int xiabs
 	helium[element].A[LINE]=AMtemp;
 	helium[element].f[LINE]=fMtemp;
 	if (Nion[element][electron] && fMtemp  && LINE <= 6) {
-	  E0=1000.*lambdatokeV/helium[element].lambda[LINE];
+	  E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	  E0=E0*doppler_rad;
 	  OSCILLATOR=helium[element].f[LINE];
 	  g_j=leveldeg[electron][LINE];
@@ -583,7 +555,7 @@ int xiabs
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
     highnfile=fopen(highnfile_name,"r");
     while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=lambdatokeV/Etemp*1000.;
+      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
@@ -596,16 +568,16 @@ int xiabs
 	  for (n=6;n<=HIGHN;++n) {
 	    OSCILLATOR=oscillatornorm/cube((double) n);
 	    if (element!=28) {
-	    E0=lambdatokeV/highn[element][electron].lambda[n]*1000.;
+	    E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	    } else if (electron==1) {/* Use Fe numbers for Ni */
-	      E0=lambdatokeV/(highn[26][electron].lambda[n]/1.1614)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
 	    } else if (electron==2) {/* Use Fe numbers for Ni */
-	      E0=lambdatokeV/(highn[26][electron].lambda[n]/1.165)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
 	    }
 	    E0=E0*doppler_rad;
 	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
 	    /* taking classical value for "ga=gamma" from p. 112-114 B+D */
-	    ga=2.47*pow(10.,-22.)*sqr(E0*eVtoergs/hhh);
+	    ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
 	  ALPHA=ga/(4.*PI*DELTANUD);
 	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
 	  }

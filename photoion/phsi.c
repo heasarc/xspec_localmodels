@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photoion_phys.h"
+#include "photoion_const.h"
 
 #include "photoion_integrate.h"
 #include "photoion_spline.h"
@@ -19,34 +20,7 @@ FCALLSCSUB6(phsi,PHSI,phsi,FLOATV,INT,FLOATV,INT,FLOATV,FLOATV)
 
 #define sqr(X) ((X)*(X))
 #define cube(X) ((X)*(X)*(X))
-#define SMALL (1.e-6)
-#define FINE_STRUCTURE (1./137.0359895)
-#define eVtoHartree (1./(2.*13.6056981))
-#define a0 (5.29177249e-9)          /* Bohr radius [cm] */
-#define ccc (2.99792458e10)         /* speed of light [cm/s] */
-#define eee (4.8032068e-10)         /* electron charge [esu] */
-#define hhh (6.6260755e-27)         /* Planck's constant [cgs] */
-#define H_0 (2.301e-18) /* Hubble constant [1/s]: (WMAP h = 71) 71*1e5/3.085678e18/1e6*/
-#define me (9.1093897e-28)          /* electron mass [g] */
-#define re (2.81794092e-13)         /* classical electron radius: e^2/m c^2 */
-#define ge (2.)                     /* gyromagnetic ratio for the electron */
-#define meeV (5.1099906e5)          /* electron mass [eV] */
-#define sigmaT (6.6525e-25)    /* Thomson cross-section [cm^2]: 8*Pi/3*re^2 */
-#define eVtoergs (1.60217733e-12)   /* convert eV to ergs */
-#define ergstoeV (1./eVtoergs)      /* convert ergs to eV */
-#define AMconv (4.13413733134e16)   /* convert Einstein A_ij A.U.'s -> s^-1 */
-#define AngstromtokeV (12.39841856)    /* Angstrom=12.39841856/E_keV */
-#define FACTOR (66.784)     /* For calculating line center optical depth */
-#define parsectocm (3.085678e18)  /* parsecs to cm */
 #define TEMPERATURES (11)
-#define SMALL (1.e-6)
-#define EPS 1.0e-5
-#define JMAX 22
-#define JMAXP JMAX+1
-#define K 5
-#define FUNC_ps(x) ((*func)(x))
-#define SWAP_ps(a,b) {double temp=(a);(a)=(b);(b)=temp;}
-#define PI (3.141592653589793)
 
 /* START */
 
@@ -184,6 +158,7 @@ int phsi
   double **H_excite, **He_excite;
 
   double redshift;
+  double H0_cosmo=0.,Omega_m_cosmo=0.; /* from XSPEC, when D=0 */
   int fileincr;
 
   int LOG,ion_A,ion_z;
@@ -221,6 +196,12 @@ int phsi
       return 0;
     }
     fclose(probe);
+  }
+
+  /* With D=0 and a non-zero redshift, the distance comes from the Hubble law,
+   * using XSPEC's cosmology. Check it here, before anything is allocated. */
+  if (param[18] == 0. && param[5] != 0.) {
+    if (pion_cosmology(&H0_cosmo,&Omega_m_cosmo)) return 1;
   }
 
   DATADIR=FGMSTR(name);
@@ -622,11 +603,11 @@ int phsi
       hubble_array_2=pion_dvector(1,HUBBLE_BINS);
       for (k=1;k<=HUBBLE_BINS;++k) {
 	z_array[k]=((double) k-1.)/((double) HUBBLE_BINS-1.)*redshift;
-	hubble_array[k]=pion_hubble_integrand(z_array[k]);
+	hubble_array[k]=pion_hubble_integrand(z_array[k],H0_cosmo,Omega_m_cosmo);
       }
       pion_spline(z_array,hubble_array,HUBBLE_BINS,1.e40,1.e40,hubble_array_2);
       D=pion_integrate(pion_hubble_integrate,0.,redshift); /* if D=0, use Hubble law */
-      if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=71 km/s/Mpc, Omega_m=0.27, Omega_lambda=0.73)\n",redshift,D/parsectocm/1.e6);
+      if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=%g km/s/Mpc, Omega_m=%g, Omega_lambda=%g, from XSPEC's cosmo setting)\n",redshift,D/parsectocm/1.e6,H0_cosmo,Omega_m_cosmo,1.-Omega_m_cosmo);
       pion_free_dvector(z_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array_2,1,HUBBLE_BINS);
@@ -731,7 +712,7 @@ int phsi
   }
   for (k=1;k<=SPECBINS;++k) {
     E_array[k]=((double) k-0.5)*EBIN+EMIN;
-    l_array[k]=AngstromtokeV/(E_array[k]/1000.);  /* [Angstrom] */
+    l_array[k]=HC_KEV_ANGSTROM/(E_array[k]/1000.);  /* [Angstrom] */
   }
 
   /* for velocity convolution out to >= 4 sigma */
@@ -843,7 +824,7 @@ int phsi
       hydrogen[element].A[LINE]=AMtemp;
       hydrogen[element].f[LINE]=fMtemp;
       if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	E0=1000.*AngstromtokeV/hydrogen[element].lambda[LINE];
+	E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	E0=E0*doppler_rad;
 	OSCILLATOR=hydrogen[element].f[LINE];
 	g_j=leveldeg[electron][LINE];
@@ -859,7 +840,7 @@ int phsi
       helium[element].A[LINE]=AMtemp;
       helium[element].f[LINE]=fMtemp;
       if (Nion[element][electron] && fMtemp && LINE <= 6) {
-	E0=1000.*AngstromtokeV/helium[element].lambda[LINE];
+	E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	E0=E0*doppler_rad;
 	OSCILLATOR=helium[element].f[LINE];
 	g_j=leveldeg[electron][LINE];
@@ -880,7 +861,7 @@ int phsi
     sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
     highnfile=fopen(highnfile_name,"r");
     while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=AngstromtokeV/Etemp*1000.;
+      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
       highn[element][electron].f[n]=ftemp;
     }
     fclose(highnfile);
@@ -893,16 +874,16 @@ int phsi
 	  for (n=6;n<=HIGHN;++n) {
 	    OSCILLATOR=oscillatornorm/cube((double) n);
 	    if (element!=28) {
-	      E0=AngstromtokeV/highn[element][electron].lambda[n]*1000.;
+	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	    } else if (electron==1) {/* Use Fe numbers for Ni */
-	      E0=AngstromtokeV/(highn[26][electron].lambda[n]/1.1614)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
 	    } else if (electron==2) {/* Use Fe numbers for Ni */
-	      E0=AngstromtokeV/(highn[26][electron].lambda[n]/1.165)*1000.;
+	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
 	    }
 	    E0=E0*doppler_rad;
 	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
 	    /* taking classical value for "ga=gamma" from p. 112-114 B+D */
-	    ga=2.47*pow(10.,-22.)*sqr(E0*eVtoergs/hhh);
+	    ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
 	    ALPHA=ga/(4.*PI*DELTANUD);
 	    pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,0.9,1.1,1);
 	  }
@@ -1283,7 +1264,7 @@ int phsi
 	  for (LINE=1;LINE<=4;++LINE) {
 	    OSCILLATOR=hydrogen[element].f[LINE];
 	    if (OSCILLATOR) {
-	      E0=1000.*AngstromtokeV/hydrogen[element].lambda[LINE];
+	      E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
 	      E0=E0*doppler_rad;
 	      ga=hydrogen[element].A[LINE]/*leveldeg[electron][LINE]/(3.*grounddeg[electron]*hydrogen[element].f[LINE])*/;
 	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1318,7 +1299,7 @@ int phsi
 	  for (LINE=3;LINE<=6;++LINE) {
 	    OSCILLATOR=helium[element].f[LINE];
 	    if (OSCILLATOR) {
-	      E0=1000.*AngstromtokeV/helium[element].lambda[LINE];
+	      E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
 	      E0=E0*doppler_rad;
 	      ga=helium[element].A[LINE]/*leveldeg[electron][LINE]/(3.*grounddeg[electron]*helium[element].f[LINE])*/;
 	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
@@ -1355,12 +1336,12 @@ int phsi
 	    if (electron==2) oscillatornorm=oshe[element]; /* defined above */
 	    for (n=6;n<=HIGHN;++n) {
 	      OSCILLATOR=oscillatornorm/cube((double) n);
-	      E0=AngstromtokeV/highn[element][electron].lambda[n]*1000.;
+	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
 	      E0=E0*doppler_rad;
 	      if (E0>=EMIN && E0<=EMAX) {
 		DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
 		/* taking classical value for "ga=gamma" from p. 112-114 B+D */
-		ga=2.47*pow(10.,-22.)*sqr(E0*eVtoergs/hhh);
+		ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
 		ALPHA=ga/(4.*PI*DELTANUD);
 		pion_line_limits(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,&Elo,&Ehi,&SUMlo,&SUMhi,0.9,1.1,1);
 		int_junk=0.;
@@ -1659,7 +1640,7 @@ int phsi
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	  E0=AngstromtokeV/hydrogen[element].lambda[LINE]*1000.;
+	  E0=HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
 	  if ((E0-EMIN+0.5*EBIN)/EBIN-(double) k >= 0.5) ++k;
@@ -1670,7 +1651,7 @@ int phsi
 	for (k=1;k<=TEMPERATURES;++k) Yvec[k]=log10(H_rec[element].rrc[k]);
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	E0=AngstromtokeV/hydrogen[element].lambda[6/*rrc*/]*1000.;
+	E0=HC_KEV_ANGSTROM/hydrogen[element].lambda[6/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
@@ -1737,7 +1718,7 @@ int phsi
 	  }
 	  pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	  E0=AngstromtokeV/helium[element].lambda[LINE]*1000.;
+	  E0=HC_KEV_ANGSTROM/helium[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
 	  if ((E0-EMIN+0.5*EBIN)/EBIN-(double) k >= 0.5) ++k;
@@ -1750,7 +1731,7 @@ int phsi
 	}
 	pion_spline(Tvec,Yvec,TEMPERATURES,1.e40,1.e40,Yvec2);
 	strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),TEMPERATURES));
-	E0=AngstromtokeV/helium[element].lambda[9/*rrc*/]*1000.;
+	E0=HC_KEV_ANGSTROM/helium[element].lambda[9/*rrc*/]*1000.;
 	E0=doppler_trans*E0;
 	/* normalize "recombination" */
 	int_junk=0.;
@@ -1886,7 +1867,7 @@ int phsi
     exc_spectrum[k]=exc_spectrum[k]/4./PI/sqr(D)/(1.+redshift);
     specRR[k]=specRR[k]/4./PI/sqr(D)/(1.+redshift);
     specDR[k]=specDR[k]/4./PI/sqr(D)/(1.+redshift);
-    convert[k]=(hhh*ccc*ergstoeV)/(sqr(l_array[k]))*1.e8;
+    convert[k]=(1.e3*HC_KEV_ANGSTROM)/(sqr(l_array[k]));
     l_spectrum[k]=E_spectrum[k]*convert[k];
     if (fileincr >= 0) {
       if (INPUT==0) {
@@ -1938,7 +1919,7 @@ int phsi
       if (earhi-Elo<EBIN) Ewidth=earhi-Elo;
       else Ewidth=EBIN;
     }
-    if (type==-1) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.*sqr(l_array[j])/AngstromtokeV;/* ph/cm^2/s in bin */
+    if (type==-1) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.*sqr(l_array[j])/HC_KEV_ANGSTROM;/* ph/cm^2/s in bin */
     else if (type==0) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.;/* ph/cm^2/s in bin */
     else photar[i]+=Ewidth*E_spectrum[j]*(1.+redshift);/* ph/cm^2/s in bin */
     if (earhi<Ehi) {
