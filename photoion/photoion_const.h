@@ -6,7 +6,7 @@
  * Everything here is derived from one CODATA edition, generated from NIST's
  * own table by photoion_codata_gen.py into photoion_codataYYYY.h. To change
  * edition, generate the new header and change this one #include; every value
- * below follows. The exceptions are pi and the parsec (IAU, not CODATA).
+ * below follows. The exceptions are pi (from GSL) and the parsec (IAU).
  *
  * The models originally carried CODATA 1986 values, with a 1998 value of hc
  * in some of them. Moving everything to one edition changed the spectra by at
@@ -17,9 +17,15 @@
  * every translation unit: do not reuse them as local identifiers. */
 
 #include "photoion_codata2022.h"
+#include <gsl/gsl_math.h>
 
-#define PI (3.141592653589793)
-#define SQRT_PI (1.7724538509055160273)
+/* pi and sqrt(pi) from GSL, which defines both correctly rounded in every
+ * compiler mode. <math.h> is not enough: M_PI is POSIX, not ISO C, and glibc
+ * hides it under a strict -std=c11/c17; and it has no sqrt(pi) constant.
+ * sqrt(M_PI) would not do either: it is one ulp away from M_SQRTPI, being the
+ * root of an already-rounded pi. */
+#define PI (M_PI)
+#define SQRT_PI (M_SQRTPI)
 
 #define ccc (CODATA_SPEED_OF_LIGHT*1.e2)                /* speed of light [cm/s] */
 #define hhh (CODATA_PLANCK*1.e7)                        /* Planck constant [erg s] */
