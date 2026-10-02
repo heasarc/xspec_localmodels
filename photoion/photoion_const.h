@@ -48,7 +48,7 @@
  * 1 au = 149597870700 m exactly (IAU 2012 Resolution B2). */
 #define parsectocm (648000./PI*1.495978707e13)
 
-/* Hubble constant [1/s]: 71 km/s/Mpc (WMAP), 71*1e5/3.085678e18/1e6 */
-#define H_0 (2.301e-18)
+/* There is deliberately no Hubble constant here. H0 and lambda0 are the
+ * user's choice, read from XSPEC's cosmo setting by pion_cosmology(). */
 
 #endif

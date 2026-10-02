@@ -158,6 +158,7 @@ int phxi
   double **H_excite, **He_excite;
 
   double redshift,**ion,N_H;
+  double H0_cosmo=0.,Omega_m_cosmo=0.; /* from XSPEC, when D=0 */
   int fileincr;
 
   int SUMlo,SUMhi;
@@ -192,6 +193,12 @@ int phxi
       return 0;
     }
     fclose(probe);
+  }
+
+  /* With D=0 and a non-zero redshift, the distance comes from the Hubble law,
+   * using XSPEC's cosmology. Check it here, before anything is allocated. */
+  if (param[28] == 0. && param[15] != 0.) {
+    if (pion_cosmology(&H0_cosmo,&Omega_m_cosmo)) return 1;
   }
 
   DATADIR=FGMSTR(name);
@@ -457,11 +464,11 @@ int phxi
       hubble_array_2=pion_dvector(1,HUBBLE_BINS);
       for (k=1;k<=HUBBLE_BINS;++k) {
 	z_array[k]=((double) k-1.)/((double) HUBBLE_BINS-1.)*redshift;
-	hubble_array[k]=pion_hubble_integrand(z_array[k]);
+	hubble_array[k]=pion_hubble_integrand(z_array[k],H0_cosmo,Omega_m_cosmo);
       }
       pion_spline(z_array,hubble_array,HUBBLE_BINS,1.e40,1.e40,hubble_array_2);
       D=pion_integrate(pion_hubble_integrate,0.,redshift); /* if D=0, use Hubble law */
-      if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=71 km/s/Mpc, Omega_m=0.27, Omega_lambda=0.73)\n",redshift,D/parsectocm/1.e6);
+      if (verbose) printf("redshift = %e   D = %e Mpc  (using H_0=%g km/s/Mpc, Omega_m=%g, Omega_lambda=%g, from XSPEC's cosmo setting)\n",redshift,D/parsectocm/1.e6,H0_cosmo,Omega_m_cosmo,1.-Omega_m_cosmo);
       pion_free_dvector(z_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array,1,HUBBLE_BINS);
       pion_free_dvector(hubble_array_2,1,HUBBLE_BINS);

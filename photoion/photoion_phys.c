@@ -278,12 +278,39 @@ double pion_gauss(double s,double x)
   return answer;
 }
 
-double pion_hubble_integrand(double z /* redshift */) /* Peacock, Eq. 3.39, p. 76 */
+/* XSPEC's cosmology, as set by its "cosmo" command (libXSFunctions, the
+ * library that also provides FGMSTR). H0 is in km/s/Mpc. */
+float csmgh0(void);
+float csmgl0(void);
+
+/* Read XSPEC's cosmology for the Hubble-law distance. The universe is taken
+ * to be flat, Omega_m = 1 - lambda0, which is also how XSPEC itself treats a
+ * non-zero lambda0; q0 is not used. lambda0 = 0 is therefore Einstein-de
+ * Sitter. lambda0 >= 1 would leave Omega_m <= 0 and the integrand undefined,
+ * so it is refused, as is H0 <= 0. Returns 0 on success. */
+int pion_cosmology(double *H0, double *Omega_m)
+{
+  double h0=csmgh0(), lambda0=csmgl0();
+  if (!(h0 > 0.) || !(lambda0 < 1.)) {
+    printf("PHOTOION: cannot use the cosmology H0 = %g, lambda0 = %g for the "
+           "Hubble-law distance (D = 0). This model needs H0 > 0 and "
+           "lambda0 < 1, because it takes the universe to be flat with "
+           "Omega_m = 1 - lambda0. Set it with XSPEC's cosmo command, or give "
+           "a distance D.\n", h0, lambda0);
+    return 1;
+  }
+  *H0=h0;
+  *Omega_m=1.-lambda0;
+  return 0;
+}
+
+/* Comoving distance integrand c/H(z) [cm] for a flat universe; H0 in
+ * km/s/Mpc. Peacock, Eq. 3.39, p. 76 */
+double pion_hubble_integrand(double z /* redshift */, double H0, double Omega_m)
 {
   double answer;
-  double Omega_m=0.27,Omega_lambda;
-  Omega_lambda=1.-Omega_m;
-  answer=ccc/H_0/sqrt(Omega_m*cube(1.+z)+Omega_lambda);
+  double H0_per_s=H0*1.e5/(1.e6*parsectocm);
+  answer=ccc/H0_per_s/sqrt(Omega_m*cube(1.+z)+(1.-Omega_m));
   return answer;
 }
 

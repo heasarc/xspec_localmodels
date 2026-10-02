@@ -511,7 +511,7 @@ variable sources like Sy1 galaxies, this allows the user to determine the
 "average" flux level to determine the proper level of reemission. <br>
 18: f - Covering factor: f=Omega/4*Pi<br>
 19: D - Distance to source in parsec.
-If D is set to "0.", then the Hubble law using the standard lambdaCDM cosmology (from the MAP results).<br>
+If D is set to "0.", the distance is computed from the redshift with the Hubble law, using the cosmology set by XSPEC's <tt>cosmo</tt> command (H0 and lambda0; q0 is not used). The universe is taken to be flat, Omega_m = 1 - lambda0, so lambda0 must be less than 1. With XSPEC's default (H0 = 70, lambda0 = 0.73) that is Omega_m = 0.27. Versions before 2026 used a fixed H0 = 71 km/s/Mpc instead.<br>
 20: EMIN - Minimum energy [keV] for internal grid.  This grid has nothing to do with the input luminosity spectrum.
 For type&gt;=2 (calculation of reemission spectrum), make sure that energy 
 range includes all regions with significant photoelectric absorption.<br>
@@ -632,7 +632,7 @@ variable sources like Sy1 galaxies, this allows the user to determine the
 "average" flux level to determine the proper level of reemission.  <br>
 28: f - Covering factor: f=Omega/4*Pi<br>
 29: D - Distance to source in parsec<br>
-If D is set to "0.", then the Hubble law using the standard lambdaCDM cosmology (from the MAP results).<br>
+If D is set to "0.", the distance is computed from the redshift with the Hubble law, using the cosmology set by XSPEC's <tt>cosmo</tt> command (H0 and lambda0; q0 is not used). The universe is taken to be flat, Omega_m = 1 - lambda0, so lambda0 must be less than 1. With XSPEC's default (H0 = 70, lambda0 = 0.73) that is Omega_m = 0.27. Versions before 2026 used a fixed H0 = 71 km/s/Mpc instead.<br>
 30: EMIN - Minimum energy [keV] for internal grid.  This grid has nothing to do with the input luminosity spectrum.
 For type&gt;=2 (calculation of reemission spectrum), make sure that energy 
 range includes all regions with significant photoelectric absorption.<br>
@@ -1006,7 +1006,7 @@ variable sources like Sy1 galaxies, this allows the user to determine the
 "average" flux level to determine the proper level of reemission.  <br>
 14: f - Covering factor: f=Omega/4*Pi<br>
 15: D - Distance to source in parsec. 
-If D is set to "0.", then the Hubble law using the standard lambdaCDM cosmology (from the MAP results).<br>
+If D is set to "0.", the distance is computed from the redshift with the Hubble law, using the cosmology set by XSPEC's <tt>cosmo</tt> command (H0 and lambda0; q0 is not used). The universe is taken to be flat, Omega_m = 1 - lambda0, so lambda0 must be less than 1. With XSPEC's default (H0 = 70, lambda0 = 0.73) that is Omega_m = 0.27. Versions before 2026 used a fixed H0 = 71 km/s/Mpc instead.<br>
 16: EMIN - Minimum energy [keV] for internal grid.  This grid has nothing to do with the input luminosity spectrum.
 For type&gt;=2 (calculation of reemission spectrum), make sure that energy 
 range includes all regions with significant photoelectric absorption.<br>
