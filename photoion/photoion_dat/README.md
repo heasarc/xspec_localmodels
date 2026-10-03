@@ -78,8 +78,6 @@ al. (1996), Verner, Verner & Ferland (1996, ADNDT 64, 1) and NIST.
 - Known errors and gaps:
   - He-like lines 7–8 (1s6p, 1s7p) are blank (λ, A and f all 0) for Ca, Fe
     and Ni, and line 8 is blank for Ar.
-  - The Ca XX continuum-edge wavelength, 3.5483 Å, is a copy of S XVI's.
-    FAC's Ca XX threshold, 5469.8 eV, gives 2.2667 Å.
   - Every P (Z = 15) row is a copy of the S row.
 
 **`highn.dat`**: H- and He-like lines with upper levels n = 6–100:
@@ -128,4 +126,7 @@ bound-electron scattering is included.
 ## Corrections and additions since the original release
 
 - **2026**: `verner_photo.dat` gains Ni XXVIII and XXVII (above).
+- **2026**: `line.dat`'s Ca XX continuum-edge wavelength was a copy of
+  S XVI's (3.5483 Å). It is now 2.2667 Å, from the FAC Ca XX threshold
+  (5469.8 eV in `Ca01a.pi_short`), the source of the other edges.
 - **2026**: `line.dat` repaired: see the photoion PR history (heasarc/xspec_localmodels #2).
