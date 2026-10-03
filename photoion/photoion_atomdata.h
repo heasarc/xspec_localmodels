@@ -70,4 +70,16 @@ const char *pion_ad_symbol(int Z);
 const struct PION_FAC_PIREC *pion_ad_fac_pi(int shell, int Z, int nelec, int *n);
 const struct PION_FAC_TRROW *pion_ad_fac_tr(int shell, int Z, int nelec, int *n);
 
+/* Emission-model data, L shell only. trates: the 10 rows for nelec (3..10).
+ * rr_short: records in the pi_short layout. .dat: rows in file order, a
+ * multiple of 10. */
+const struct PION_TRATES_ROW *pion_ad_trates(int Z, int nelec);
+const struct PION_TRSHORTER_ROW *pion_ad_tr_shorter(int Z, int nelec, int *n);
+const struct PION_RRLINE_ROW *pion_ad_rrlines(int Z, int nelec, int *n);
+const struct PION_FAC_PIREC *pion_ad_rr_short(int Z, int nelec, int *n);
+
+/* H_recombination.dat and He_recombination.dat, indexed [0..28] by Z. */
+const struct H_REC_STRUCT *pion_ad_h_rec(void);
+const struct HE_REC_STRUCT *pion_ad_he_rec(void);
+
 #endif

@@ -176,7 +176,7 @@ double pion_excitsigma(double E0, double OSCILLATOR,double DELTANUD,double ALPHA
   return answer;
 }
 
-double pion_fac_PI_rate_integral(double THRESHOLD,double Labsorb[])
+double pion_fac_PI_rate_integral(double THRESHOLD,const double Labsorb[])
 {
   int k,klo,khi,kth;
   double strength,pitemp=0.;

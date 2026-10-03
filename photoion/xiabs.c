@@ -64,7 +64,7 @@ int xiabs
   double earBIN,Ewidth;
 
   /* junk values for strings, ints, and floats */
-  char *sjunk,*line,*sjunk1,*sjunk2,*sjunk3,*sjunk4;
+  char *line;
   int ijunk;
   double djunk;
 
@@ -139,11 +139,6 @@ int xiabs
   /* FILE NAMES */
 
   temp=malloc(pathlen);
-  sjunk=malloc(50);
-  sjunk1=malloc(50);
-  sjunk2=malloc(50);
-  sjunk3=malloc(50);
-  sjunk4=malloc(50);
   line=malloc(400);
 
   Nion=pion_dmatrix(1,28,1,28);
@@ -475,11 +470,6 @@ int xiabs
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
   free(temp);
-  free(sjunk);
-  free(sjunk1);
-  free(sjunk2);
-  free(sjunk3);
-  free(sjunk4);
   free(line);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 

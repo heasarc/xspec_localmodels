@@ -68,6 +68,33 @@ struct PION_FAC_TRROW {
 };
 enum { PION_L_SHELL = 0, PION_M_SHELL = 1 };
 
+/* L_shell/trates<El>.dat: for each ion (3..10 electrons), RECNUM = 10 rows of
+ * (index, kT, total RR, total DR rate [1e-10]). */
+struct PION_TRATES_ROW { int ijunk; double T, RR, DR; };
+/* L_shell/<El><nn>a.tr_shorter: upper level, its J index, lower level, its
+ * J index, energy [eV], f, A. */
+struct PION_TRSHORTER_ROW { int j, jjunk, i, ijunk; double en, f, A; };
+/* L_shell/<El><nn>.dat: RR/DR line or RRC data in groups of 10 rows, one per
+ * temperature: (index, kT, type, lower, upper, energy, lambda, RR, DR). */
+struct PION_RRLINE_ROW { int ijunk; double kT; int typenum, itemp, jtemp; double en, lambda, RR, DR; };
+
+/* H_recombination.dat / He_recombination.dat, indexed by Z, at the
+ * PION_REC_TEMPERATURES temperatures (1-based). The emission models' own
+ * TEMPERATURES macro is this same 11. */
+#define PION_REC_TEMPERATURES 11
+struct H_REC_STRUCT {
+  double T[PION_REC_TEMPERATURES+1];
+  double lines[6][PION_REC_TEMPERATURES+1];
+  double rrc[PION_REC_TEMPERATURES+1];
+  double C[PION_REC_TEMPERATURES+1];
+};
+struct HE_REC_STRUCT {
+  double T[PION_REC_TEMPERATURES+1];
+  double lines[9][PION_REC_TEMPERATURES+1];
+  double rrc[PION_REC_TEMPERATURES+1];
+  double C[PION_REC_TEMPERATURES+1];
+};
+
 /* highn.dat: lambda and f for principal quantum number n, indexed [Z][electrons]. */
 struct HIGHER_ORDER_STRUCT {
   double lambda[101];
@@ -86,7 +113,7 @@ double pion_RR_line_spline(double temp);
 double pion_dfdE(double g_i,double p0, double p1, double p2, double p3, double Te);
 double pion_doppler(double v );
 double pion_excitsigma(double E0, double OSCILLATOR,double DELTANUD,double ALPHA, double E);
-double pion_fac_PI_rate_integral(double THRESHOLD,double Labsorb[]);
+double pion_fac_PI_rate_integral(double THRESHOLD,const double Labsorb[]);
 double pion_fac_ionizsigma(double THRESHOLD, double E);
 double pion_fac_recombination(double g_i,double g_j,double p0,double p1,double p2,double p3,double kT, double Te);
 double pion_fion(double xi);

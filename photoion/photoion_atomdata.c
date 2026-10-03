@@ -44,6 +44,10 @@ static struct HIGHER_ORDER_STRUCT hn[29][3];
 /* One cached data file of n rows. */
 struct rowfile { int state; int n; void *rows; };
 static struct rowfile fac_pi[2][29][29], fac_tr[2][29][29];   /* [shell][Z][nelec] */
+static struct rowfile trates_f[29], trsh[29][29], rrl[29][29], rrs[29][29];
+static struct H_REC_STRUCT  h_rec[29];
+static struct HE_REC_STRUCT he_rec[29];
+static int st_hrec, st_herec;
 
 static void free_rowfiles(struct rowfile *rf, size_t count)
 {
@@ -62,6 +66,13 @@ static void reset(void)
   memset(hn, 0, sizeof hn);
   free_rowfiles(&fac_pi[0][0][0], sizeof fac_pi / sizeof fac_pi[0][0][0]);
   free_rowfiles(&fac_tr[0][0][0], sizeof fac_tr / sizeof fac_tr[0][0][0]);
+  free_rowfiles(trates_f, sizeof trates_f / sizeof trates_f[0]);
+  free_rowfiles(&trsh[0][0], sizeof trsh / sizeof trsh[0][0]);
+  free_rowfiles(&rrl[0][0], sizeof rrl / sizeof rrl[0][0]);
+  free_rowfiles(&rrs[0][0], sizeof rrs / sizeof rrs[0][0]);
+  memset(h_rec, 0, sizeof h_rec);
+  memset(he_rec, 0, sizeof he_rec);
+  st_hrec = st_herec = UNREAD;
   memset(abund, 0, sizeof abund);
   memset(oshe_raw, 0, sizeof oshe_raw);
   memset(oshe_set, 0, sizeof oshe_set);
@@ -454,5 +465,239 @@ const struct PION_FAC_TRROW *pion_ad_fac_tr(int shell, int Z, int nelec, int *n)
   if (!usable(&rf->state)) return NULL;
   *n = rf->n;
   return rf->rows;
+}
+
+/* Read a whole text file into an array of lines (without the newline). The
+ * fgets/sscanf readers below are only equivalent to the models' fgets loops
+ * because every line in these files is under the models' 400-byte buffer and
+ * fully parseable; that was checked over all 9 trates, 90 tr_shorter and 72
+ * .dat files on 2026-10-02. */
+static char **read_lines(FILE *in, int *n)
+{
+  char buf[4096], **lines = NULL;
+  int cap = 0, count = 0;
+  size_t len;
+
+  while (fgets(buf, sizeof buf, in) != NULL) {
+    len = strlen(buf);
+    if (len && buf[len-1] == '\n') buf[--len] = '\0';
+    lines = grow(lines, count, &cap, sizeof *lines);
+    if (lines == NULL) break;
+    lines[count] = malloc(len + 1);
+    if (lines[count] == NULL) { pion_error("photoion_atomdata: out of memory"); break; }
+    memcpy(lines[count], buf, len + 1);
+    ++count;
+  }
+  *n = count;
+  return lines;
+}
+
+static void free_lines(char **lines, int n)
+{
+  int k;
+  for (k = 0; k < n; ++k) free(lines[k]);
+  free(lines);
+}
+
+/* trates<El>.dat: the models skipped 12+(nelec-3)*10 lines with fgets, then
+ * fscanf'd 10 rows of 4 numbers. Rows are cached for nelec 3..10 at once. */
+const struct PION_TRATES_ROW *pion_ad_trates(int Z, int nelec)
+{
+  struct rowfile *rf;
+  struct PION_TRATES_ROW *rows;
+  char name[64], **lines;
+  const char *sym;
+  int nl, e, k;
+  FILE *in;
+
+  if (Z < 0 || Z > 28 || nelec < 3 || nelec > 10) { failed = 1; return NULL; }
+  rf = &trates_f[Z];
+  if (rf->state == UNREAD) {
+    sym = pion_ad_symbol(Z);
+    if (sym == NULL) { printf("PHOTOION: no FAC data for element Z=%d\n", Z); rf->state = MISSING; failed = 1; return NULL; }
+    snprintf(name, sizeof name, "L_shell/trates%s.dat", sym);
+    in = open_data(name, &rf->state);
+    if (in == NULL) return NULL;
+    lines = read_lines(in, &nl);
+    fclose(in);
+    rows = calloc(8 * 10, sizeof *rows);
+    if (rows == NULL) { free_lines(lines, nl); pion_error("photoion_atomdata: out of memory"); return NULL; }
+    for (e = 3; e <= 10; ++e)
+      for (k = 0; k < 10; ++k) {
+        int ln = 12 + (e-3)*10 + k;
+        struct PION_TRATES_ROW *r = &rows[(e-3)*10 + k];
+        if (ln < nl) sscanf(lines[ln], "%d%lf%lf%lf", &r->ijunk, &r->T, &r->RR, &r->DR);
+      }
+    free_lines(lines, nl);
+    rf->rows = rows;
+    rf->n = 80;
+    rf->state = LOADED;
+  }
+  if (!usable(&rf->state)) return NULL;
+  return (const struct PION_TRATES_ROW *) rf->rows + (nelec-3)*10;
+}
+
+/* Open L_shell/<El><nn><suffix> and read it as lines. */
+static char **ion_lines(int Z, int nelec, const char *suffix, struct rowfile *rf, int *nl)
+{
+  FILE *in = open_ion_file(PION_L_SHELL, Z, nelec, suffix, &rf->state);
+  char **lines;
+  if (in == NULL) return NULL;
+  lines = read_lines(in, nl);
+  fclose(in);
+  return lines;
+}
+
+const struct PION_TRSHORTER_ROW *pion_ad_tr_shorter(int Z, int nelec, int *n)
+{
+  struct rowfile *rf;
+  struct PION_TRSHORTER_ROW *rows;
+  char **lines;
+  int nl, k;
+
+  *n = 0;
+  if (!valid_ion(PION_L_SHELL, Z, nelec)) { failed = 1; return NULL; }
+  rf = &trsh[Z][nelec];
+  if (rf->state == UNREAD) {
+    lines = ion_lines(Z, nelec, "a.tr_shorter", rf, &nl);
+    if (lines == NULL && rf->state == MISSING) return NULL;
+    rows = calloc(nl ? nl : 1, sizeof *rows);
+    if (rows == NULL) { free_lines(lines, nl); pion_error("photoion_atomdata: out of memory"); return NULL; }
+    for (k = 0; k < nl; ++k)
+      sscanf(lines[k],"%d%d%d%d%lf%lf%lf",&rows[k].j,&rows[k].jjunk,&rows[k].i,&rows[k].ijunk,&rows[k].en,&rows[k].f,&rows[k].A);
+    free_lines(lines, nl);
+    rf->rows = rows;
+    rf->n = nl;
+    rf->state = LOADED;
+  }
+  if (!usable(&rf->state)) return NULL;
+  *n = rf->n;
+  return rf->rows;
+}
+
+const struct PION_RRLINE_ROW *pion_ad_rrlines(int Z, int nelec, int *n)
+{
+  struct rowfile *rf;
+  struct PION_RRLINE_ROW *rows;
+  char **lines;
+  int nl, k;
+
+  *n = 0;
+  if (!valid_ion(PION_L_SHELL, Z, nelec)) { failed = 1; return NULL; }
+  rf = &rrl[Z][nelec];
+  if (rf->state == UNREAD) {
+    lines = ion_lines(Z, nelec, ".dat", rf, &nl);
+    if (lines == NULL && rf->state == MISSING) return NULL;
+    rows = calloc(nl ? nl : 1, sizeof *rows);
+    if (rows == NULL) { free_lines(lines, nl); pion_error("photoion_atomdata: out of memory"); return NULL; }
+    for (k = 0; k < nl; ++k)
+      sscanf(lines[k],"%d%lf%d%d%d%lf%lf%lf%lf",&rows[k].ijunk,&rows[k].kT,&rows[k].typenum,&rows[k].itemp,&rows[k].jtemp,&rows[k].en,&rows[k].lambda,&rows[k].RR,&rows[k].DR);
+    free_lines(lines, nl);
+    if (nl % 10) printf("PHOTOION: %s%02d.dat: %d lines, not a multiple of 10\n", pion_ad_symbol(Z), nelec, nl);
+    rf->rows = rows;
+    rf->n = nl - nl % 10;
+    rf->state = LOADED;
+  }
+  if (!usable(&rf->state)) return NULL;
+  *n = rf->n;
+  return rf->rows;
+}
+
+/* rr_short has the pi_short layout. */
+const struct PION_FAC_PIREC *pion_ad_rr_short(int Z, int nelec, int *n)
+{
+  struct rowfile *rf;
+  struct PION_FAC_PIREC r, *rows = NULL;
+  int k, cap = 0, count = 0;
+  FILE *input;
+
+  *n = 0;
+  if (!valid_ion(PION_L_SHELL, Z, nelec)) { failed = 1; return NULL; }
+  rf = &rrs[Z][nelec];
+  if (rf->state == UNREAD) {
+    input = open_ion_file(PION_L_SHELL, Z, nelec, "a.rr_short", &rf->state);
+    if (input == NULL) return NULL;
+    while (fscanf(input,"%d%lf%d%lf%lf%lf",&r.i,&r.g_i,&r.j,&r.g_j,&r.THRESHOLD,&r.ANGULAR)!=EOF) {
+      fscanf(input,"%lf%lf%lf%lf",&r.p[0],&r.p[1],&r.p[2],&r.p[3]);
+      for (k=0;k<PION_LOWE_N;++k)
+        fscanf(input,"%lf%lf%lf%lf",&r.grid[k][0],&r.grid[k][1],&r.grid[k][2],&r.grid[k][3]);
+      rows = grow(rows, count, &cap, sizeof *rows);
+      if (rows == NULL) break;
+      rows[count++] = r;
+    }
+    fclose(input);
+    rf->rows = rows;
+    rf->n = count;
+    rf->state = LOADED;
+  }
+  if (!usable(&rf->state)) return NULL;
+  *n = rf->n;
+  return rf->rows;
+}
+
+const struct H_REC_STRUCT *pion_ad_h_rec(void)
+{
+  int element, k;
+  double Ttemp,atemp,btemp,ctemp,dtemp,etemp,rrctemp,Ctemp;
+  FILE *H_recfile;
+
+  if (st_hrec == UNREAD) {
+    H_recfile = open_data("H_recombination.dat", &st_hrec);
+    if (H_recfile) {
+      k=1;
+      while (fscanf(H_recfile,"%d%lf%lf%lf%lf%lf%lf%lf%lf",&element,&Ttemp,&atemp,&btemp,&ctemp,&dtemp,&etemp,&rrctemp,&Ctemp)!=EOF) {
+        if (element >= 0 && element <= 28) {
+          h_rec[element].T[k]=Ttemp;
+          h_rec[element].lines[1][k]=atemp;
+          h_rec[element].lines[2][k]=btemp;
+          h_rec[element].lines[3][k]=ctemp;
+          h_rec[element].lines[4][k]=dtemp;
+          h_rec[element].lines[5][k]=etemp;
+          h_rec[element].rrc[k]=rrctemp;
+          h_rec[element].C[k]=1.e-10*Ctemp;
+        }
+        ++k;
+        if (k==PION_REC_TEMPERATURES+1) k=1;
+      }
+      fclose(H_recfile);
+      st_hrec = LOADED;
+    }
+  }
+  usable(&st_hrec);
+  return h_rec;
+}
+
+const struct HE_REC_STRUCT *pion_ad_he_rec(void)
+{
+  int element, k;
+  double Ttemp,ftemp,intertemp,rtemp,btemp,ctemp,dtemp,etemp,rrctemp,Ctemp;
+  FILE *He_recfile;
+
+  if (st_herec == UNREAD) {
+    He_recfile = open_data("He_recombination.dat", &st_herec);
+    if (He_recfile) {
+      k=1;
+      while (fscanf(He_recfile,"%d%lf%lf%lf%lf%lf%lf%lf%lf%lf%lf",&element,&Ttemp,&ftemp,&intertemp,&rtemp,&btemp,&ctemp,&dtemp,&etemp,&rrctemp,&Ctemp)!=EOF) {
+        if (element >= 0 && element <= 28) {
+          he_rec[element].T[k]=Ttemp;
+          he_rec[element].lines[1][k]=ftemp;
+          he_rec[element].lines[2][k]=intertemp;
+          he_rec[element].lines[3][k]=rtemp;
+          he_rec[element].lines[4][k]=btemp;
+          he_rec[element].lines[5][k]=ctemp;
+          he_rec[element].lines[6][k]=dtemp;
+          he_rec[element].lines[7][k]=etemp;
+          he_rec[element].rrc[k]=rrctemp;
+          he_rec[element].C[k]=1.e-10*Ctemp;
+        }
+        ++k;
+        if (k==PION_REC_TEMPERATURES+1) k=1;
+      }
+      fclose(He_recfile);
+      st_herec = LOADED;
+    }
+  }
+  usable(&st_herec);
+  return he_rec;
 }
 
