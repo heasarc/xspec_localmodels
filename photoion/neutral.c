@@ -252,13 +252,11 @@ int neutral
   }
   
   /* Read in edge opacity: neutral.tau, parsed once (photoion_atomdata), one
-   * entry per line. Open issue 11 still stands: the 3 header lines are taken
-   * as data, sscanf converts nothing for them, and tau_edge[1..3] get
-   * whatever djunk last held -- the last value of oscillator_he.dat, as when
-   * the inline loop read that file -- so every row lands 3 bins late. The
-   * loop used to run on past SPECBINS and write the file's last 3 rows beyond
-   * tau_edge and E_bin; it stops at SPECBINS now. Those 3 values were never
-   * read, and E_bin (written, never read) is gone. */
+   * row per bin. The file has no header: row j is bin j. (It used to begin
+   * with the 3-line header XSPEC's wdata writes, which this loop took as
+   * data, so every row landed 3 bins late; the header was removed from the
+   * file rather than skipped here.) A row with fewer than 3 numbers keeps
+   * the previous value, as the original sscanf loop did. */
   djunk=pion_ad_oscillator_he_lastraw();
   ntau=pion_ad_neutral_tau(&nntau);
   for (r=0,j=1;r<nntau && j<=SPECBINS;++r,++j) {
