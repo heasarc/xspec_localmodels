@@ -1,6 +1,7 @@
 #include "cfortran.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
@@ -784,6 +785,9 @@ int photoion
   /*  Reading in Photoionization Cross Sections (Verner)  */
   sprintf(vernerpartial_name,"%s/photoion_dat/verner_partial_PIsigmas.dat",DATADIR);
   vernerpartial=fopen(vernerpartial_name,"r");
+  /* Only the first npartial records of each element are filled; zero the rest
+   * so the edge loops below cannot match stale stack contents (open issue 12). */
+  memset(partialsigma,0,sizeof partialsigma);
   k=0;
   while (fscanf(vernerpartial,"%d%d%d%d%lf%lf%lf%lf%lf%lf",&element,&electron,&principal,&angular,&Eth,&Ezero,&s0,&ya,&P,&yw)!=EOF) {
     if (element!=element_prev) k=0;
@@ -823,7 +827,7 @@ int photoion
   for (element=6;element<=8;++element) {
     for (electron=3;electron<=8;++electron) {
       if (Nion[element][electron]) {
-	for (j=0;j<=PARTIAL_NUM;++j) {
+	for (j=0;j<PARTIAL_NUM;++j) {
 	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=2) {
 	    THRESHOLD=partialsigma[element][j].Eth;
 	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
@@ -837,7 +841,7 @@ int photoion
   for (element=1;element<=28;++element) {
     for (electron=11;electron<=28;++electron) {
       if (Nion[element][electron] && !(electron <=20 && (element == 26 || element == 28))) {
-	for (j=0;j<=PARTIAL_NUM;++j) {
+	for (j=0;j<PARTIAL_NUM;++j) {
 	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=3) {
 	    THRESHOLD=partialsigma[element][j].Eth;
 	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
