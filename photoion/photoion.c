@@ -587,11 +587,9 @@ int photoion
 
   EGRID=pion_dvector(1,GRIDNUM);  
   PIGRID=pion_dvector(1,GRIDNUM); 
-  PIGRID_2=pion_dvector(1,GRIDNUM);
 
   LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
   LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
-  LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
   specRR=pion_dvector(1,SPECBINS);  
   specDR=pion_dvector(1,SPECBINS);  
@@ -1026,7 +1024,6 @@ int photoion
   pion_free_dmatrix(rateDR,1,28,1,28);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
-  pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
   pion_free_dvector(specRR,1,SPECBINS);  
   pion_free_dvector(specDR,1,SPECBINS);  
   pion_free_dvector(specRR_temp,1,SPECBINS);  
@@ -1084,7 +1081,6 @@ int photoion
   pion_free_dvector(Yvec2,1,TEMPERATURES);
   pion_free_dvector(EGRID,1,GRIDNUM);  
   pion_free_dvector(PIGRID,1,GRIDNUM); 
-  pion_free_dvector(PIGRID_2,1,GRIDNUM);
   
   if (verbose) printf("Done!\n");
   

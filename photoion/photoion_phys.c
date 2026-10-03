@@ -25,6 +25,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -35,6 +36,7 @@
 #include "photoion_const.h"
 #include "photoion_atomdata.h"
 #include "photoion_integrate.h"
+#include "photoion_cspline.h"
 
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
@@ -345,12 +347,21 @@ double pion_loglinestrength(double logkT, int ntemps)
   return answer;
 }
 
+/* The photoionization tables of the FAC record loaded last: the 6-point
+ * low-energy table (its own copy of the abscissae, since LOWE_EGRID is
+ * reused for other things) and the 20000-point table over a master copy of
+ * EGRID. Both are compact splines (photoion_cspline.c). */
+static double lowe_x[PION_LOWE_N];
+static struct pion_cspline lowe_spline, pi_spline;
+static double *egrid_master = NULL;
+static const double *egrid_seen = NULL;   /* the EGRID last compared with the master */
+
 double pion_lowEpispline(double E)
 {
   double answer;
   
   E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_PIGRID,LOWE_PIGRID_2,LOWE_GRIDNUM,E,&answer);
+  answer=pion_cspline_eval(&lowe_spline,E);
   return pow(10.,answer);
 }
 
@@ -375,7 +386,7 @@ double pion_pispline(double E)
   double answer;
   
   E=log10(E);
-  pion_splint(EGRID,PIGRID,PIGRID_2,GRIDNUM,E,&answer);
+  answer=pion_cspline_eval(&pi_spline,E);
   return pow(10.,answer);
 }
 
@@ -782,13 +793,15 @@ void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g
     LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
     LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
   }
-  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);
+  for (k=1;k<=LOWE_GRIDNUM;++k) lowe_x[k-1]=LOWE_EGRID[k];
+  pion_cspline_free(&lowe_spline);
+  pion_cspline_init(&lowe_spline,lowe_x,LOWE_PIGRID+1,LOWE_GRIDNUM);
 }
 
 /* The 20000-point photoionization table for the record loaded last: zero
  * (1e-90) below threshold, the 6-point spline up to its last node (open issue
  * 7 covers the region below its first node), the FAC fit above. Then log10
- * and a spline in PIGRID/PIGRID_2. */
+ * and a compact spline over it (photoion_cspline.c). */
 void pion_fac_build_table(double g_i, const double p[4])
 {
   int k;
@@ -801,7 +814,20 @@ void pion_fac_build_table(double g_i, const double p[4])
     else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
   }
   for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-  pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
+  /* EGRID is rebuilt with the same values every evaluation; keep one
+   * master copy for the spline to reference, refreshed only if it changes. */
+  if (egrid_master==NULL) {
+    egrid_master=malloc((size_t) GRIDNUM*sizeof *egrid_master);
+    if (egrid_master==NULL) { pion_error("pion_fac_build_table: out of memory"); return; }
+    memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    egrid_seen=EGRID;
+  } else if (EGRID!=egrid_seen) {   /* a new evaluation's array: compare once */
+    if (memcmp(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master)!=0)
+      memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    egrid_seen=EGRID;
+  }
+  pion_cspline_free(&pi_spline);
+  pion_cspline_init(&pi_spline,egrid_master,PIGRID+1,GRIDNUM);
 }
 
 /* Edges of one FAC pi_short file: build each record's table if the edge

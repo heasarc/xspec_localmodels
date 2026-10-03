@@ -188,11 +188,9 @@ int siabs
 
   EGRID=pion_dvector(1,GRIDNUM);  
   PIGRID=pion_dvector(1,GRIDNUM); 
-  PIGRID_2=pion_dvector(1,GRIDNUM);
 
   LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
   LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
-  LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
   E_array=pion_dvector(1,SPECBINS);       /* energy axis */
   tau=pion_dvector(1,SPECBINS);           /* total opacity in all ions */
@@ -350,7 +348,6 @@ int siabs
   /* Free all the memory */
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
-  pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
   pion_free_dvector(ABUND,1,30);
   pion_free_dvector(oshe,1,30);
   pion_free_dvector(E_array,1,SPECBINS);       
@@ -364,7 +361,6 @@ int siabs
   pion_free_ivector(list,1,ELEMENTS);
   pion_free_dvector(EGRID,1,GRIDNUM);  
   pion_free_dvector(PIGRID,1,GRIDNUM); 
-  pion_free_dvector(PIGRID_2,1,GRIDNUM);
   if (verbose) printf("...done!\n");
   
   /* A data file could not be opened: everything above ran on zeros. Report it
