@@ -59,4 +59,15 @@ const struct HELIUM_STRUCT *pion_ad_helium(void);
  * Ni (28) reads zeros (see open issue 14). */
 const struct HIGHER_ORDER_STRUCT (*pion_ad_highn(void))[3];
 
+/* Element symbol used in the data file names (C N O Ne Mg Al Si S Ar Ca Fe
+ * Ni), or NULL for an element the package has no FAC data for. */
+const char *pion_ad_symbol(int Z);
+
+/* FAC data for one ion: shell PION_L_SHELL or PION_M_SHELL, element Z,
+ * nelec electrons. The photoionization records of <El><nn>a.pi_short and
+ * the transition rows of <El><nn>a.tr_short, in file order. A missing file
+ * reports, raises the flag and gives 0 rows. */
+const struct PION_FAC_PIREC *pion_ad_fac_pi(int shell, int Z, int nelec, int *n);
+const struct PION_FAC_TRROW *pion_ad_fac_tr(int shell, int Z, int nelec, int *n);
+
 #endif

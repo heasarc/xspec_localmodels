@@ -25,8 +25,9 @@ constructed filenames in a fixed 130-character buffer, and a path of
 about 100 characters or more aborted XSPEC.)
 <p>
 The abundance, He oscillator-strength, temperature, Verner
-photoionization, line (line.dat) and high-n line (highn.dat) tables are
-read once per XSPEC session and kept, not
+photoionization, line (line.dat), high-n line (highn.dat) and FAC
+L- and M-shell (pi_short, tr_short) tables are read once per XSPEC
+session, as each is first needed, and kept, not
 re-read on every evaluation. If one of them cannot be opened, the model
 prints "PHOTOION: cannot open <i>path</i>" once and returns zeros. Restart
 XSPEC, or change PHOTOION_DIR, to retry.

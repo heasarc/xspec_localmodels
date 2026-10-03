@@ -39,7 +39,17 @@ static struct PION_LINE_ROW *line_rows = NULL;
 static int    nline_rows = 0;
 static struct HYDROGEN_STRUCT hyd[29];
 static struct HELIUM_STRUCT   hel[29];
-static struct HIGHER_ORDER_STRUCT hn[29][3];   /* [29]: the emission PE-rate block indexes Ni (28) */
+static struct HIGHER_ORDER_STRUCT hn[29][3];
+
+/* One cached data file of n rows. */
+struct rowfile { int state; int n; void *rows; };
+static struct rowfile fac_pi[2][29][29], fac_tr[2][29][29];   /* [shell][Z][nelec] */
+
+static void free_rowfiles(struct rowfile *rf, size_t count)
+{
+  size_t k;
+  for (k = 0; k < count; ++k) { free(rf[k].rows); rf[k].rows = NULL; rf[k].n = 0; rf[k].state = UNREAD; }
+}   /* [29]: the emission PE-rate block indexes Ni (28) */
 
 static void reset(void)
 {
@@ -50,6 +60,8 @@ static void reset(void)
   memset(hyd, 0, sizeof hyd);
   memset(hel, 0, sizeof hel);
   memset(hn, 0, sizeof hn);
+  free_rowfiles(&fac_pi[0][0][0], sizeof fac_pi / sizeof fac_pi[0][0][0]);
+  free_rowfiles(&fac_tr[0][0][0], sizeof fac_tr / sizeof fac_tr[0][0][0]);
   memset(abund, 0, sizeof abund);
   memset(oshe_raw, 0, sizeof oshe_raw);
   memset(oshe_set, 0, sizeof oshe_set);
@@ -335,5 +347,112 @@ const struct HIGHER_ORDER_STRUCT (*pion_ad_highn(void))[3]
   }
   usable(&st_highn);
   return (const struct HIGHER_ORDER_STRUCT (*)[3]) hn;
+}
+
+const char *pion_ad_symbol(int Z)
+{
+  switch (Z) {
+    case 6: return "C";   case 7: return "N";   case 8: return "O";
+    case 10: return "Ne"; case 12: return "Mg"; case 13: return "Al";
+    case 14: return "Si"; case 16: return "S";  case 18: return "Ar";
+    case 20: return "Ca"; case 26: return "Fe"; case 28: return "Ni";
+    default: return NULL;
+  }
+}
+
+/* Open {L,M}_shell/<El><nn><suffix> for one ion. The name is the one the
+ * models built: <nn> was "0%d" below 10 and "%d" or "%2d" from 10 up, which
+ * for 1..28 electrons is exactly "%02d". */
+static FILE *open_ion_file(int shell, int Z, int nelec, const char *suffix, int *state)
+{
+  char name[64];
+  const char *sym = pion_ad_symbol(Z);
+
+  if (sym == NULL) {
+    printf("PHOTOION: no FAC data for element Z=%d\n", Z);
+    *state = MISSING;
+    failed = 1;
+    return NULL;
+  }
+  snprintf(name, sizeof name, "%s_shell/%s%02d%s", shell == PION_M_SHELL ? "M" : "L", sym, nelec, suffix);
+  return open_data(name, state);
+}
+
+static int valid_ion(int shell, int Z, int nelec)
+{
+  return (shell == PION_L_SHELL || shell == PION_M_SHELL) && Z >= 0 && Z <= 28 && nelec >= 0 && nelec <= 28;
+}
+
+/* Append one element of the given size to a growing array. */
+static void *grow(void *rows, int n, int *cap, size_t size)
+{
+  void *g;
+  if (n < *cap) return rows;
+  *cap = *cap ? 2 * *cap : 16;
+  g = realloc(rows, (size_t) *cap * size);
+  if (g == NULL) pion_error("photoion_atomdata: out of memory");
+  return g;
+}
+
+const struct PION_FAC_PIREC *pion_ad_fac_pi(int shell, int Z, int nelec, int *n)
+{
+  struct rowfile *rf;
+  struct PION_FAC_PIREC r, *rows = NULL;
+  int k, cap = 0, count = 0;
+  FILE *input;
+
+  *n = 0;
+  if (!valid_ion(shell, Z, nelec)) { failed = 1; return NULL; }
+  rf = &fac_pi[shell][Z][nelec];
+  if (rf->state == UNREAD) {
+    input = open_ion_file(shell, Z, nelec, "a.pi_short", &rf->state);
+    if (input) {
+      /* The models' loop: a header, then the fit, then the 6-point table. */
+      while (fscanf(input,"%d%lf%d%lf%lf%lf",&r.i,&r.g_i,&r.j,&r.g_j,&r.THRESHOLD,&r.ANGULAR) != EOF) {
+        fscanf(input,"%lf%lf%lf%lf",&r.p[0],&r.p[1],&r.p[2],&r.p[3]);
+        for (k=0;k<PION_LOWE_N;++k)
+          fscanf(input,"%lf%lf%lf%lf",&r.grid[k][0],&r.grid[k][1],&r.grid[k][2],&r.grid[k][3]);
+        rows = grow(rows, count, &cap, sizeof *rows);
+        if (rows == NULL) break;
+        rows[count++] = r;
+      }
+      fclose(input);
+      rf->rows = rows;
+      rf->n = count;
+      rf->state = LOADED;
+    }
+  }
+  if (!usable(&rf->state)) return NULL;
+  *n = rf->n;
+  return rf->rows;
+}
+
+const struct PION_FAC_TRROW *pion_ad_fac_tr(int shell, int Z, int nelec, int *n)
+{
+  struct rowfile *rf;
+  struct PION_FAC_TRROW r, *rows = NULL;
+  int cap = 0, count = 0;
+  FILE *input;
+
+  *n = 0;
+  if (!valid_ion(shell, Z, nelec)) { failed = 1; return NULL; }
+  rf = &fac_tr[shell][Z][nelec];
+  if (rf->state == UNREAD) {
+    input = open_ion_file(shell, Z, nelec, "a.tr_short", &rf->state);
+    if (input) {
+      while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&r.j,&r.g_j,&r.i,&r.g_i,&r.en,&r.f,&r.A) != EOF) {
+        rows = grow(rows, count, &cap, sizeof *rows);
+        if (rows == NULL) break;
+        rows[count++] = r;
+      }
+      fclose(input);
+      rf->rows = rows;
+      rf->n = count;
+      rf->state = LOADED;
+    }
+  }
+  if (!usable(&rf->state)) return NULL;
+  *n = rf->n;
+  return rf->rows;
 }
 

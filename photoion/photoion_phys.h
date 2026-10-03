@@ -48,6 +48,26 @@ struct PION_LINE_ROW {
   int element, electron, LINE;
   double WAVE, A, f;
 };
+/* FAC photoionization record from a {L,M}_shell/<El><nn>a.pi_short file, raw
+ * as the file gives it: header (lower level i, 2J g_i, upper level j, 2J g_j,
+ * threshold [eV], angular momentum), the fit parameters p0..p3, and the
+ * 6-point table of (E - threshold, RR sigma, PI sigma [Mb], column 4). The
+ * models apply g+1, log10 and the 1e-20 scaling at the point of use. */
+#define PION_LOWE_N 6
+struct PION_FAC_PIREC {
+  int i, j;
+  double g_i, g_j, THRESHOLD, ANGULAR;
+  double p[4];
+  double grid[PION_LOWE_N][4];
+};
+/* FAC transition row from a ....tr_short file, raw: upper level j and its
+ * 2J g_j, lower level i and its 2J g_i, energy [eV], oscillator strength, A. */
+struct PION_FAC_TRROW {
+  int j, i;
+  double g_j, g_i, en, f, A;
+};
+enum { PION_L_SHELL = 0, PION_M_SHELL = 1 };
+
 /* highn.dat: lambda and f for principal quantum number n, indexed [Z][electrons]. */
 struct HIGHER_ORDER_STRUCT {
   double lambda[101];
@@ -98,6 +118,13 @@ void pion_highn_line_opacity(double **Nion, double sigmav_rad,
                              const struct HIGHER_ORDER_STRUCT (*highn)[3],
                              const int list[], int nlist, int HIGHN, const double oshe[],
                              double tau_p[], double pad_lo, double pad_hi, int clamp_both);
+enum { PION_FAC_L_NE_NI, PION_FAC_L_C_O, PION_FAC_M };
+void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g_j);
+void pion_fac_build_table(double g_i, const double p[4]);
+void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
+                            int do_edges, int do_lines, int verbose,
+                            double tau_edge_p[], double tau_exc_p[],
+                            double pad_lo, double pad_hi, int clamp_both);
 void pion_verner_edges(double **Nion,
                        const struct VERNER_STRUCT (*vernerionizsigma)[31],
                        const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],

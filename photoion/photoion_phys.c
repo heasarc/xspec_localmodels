@@ -33,6 +33,7 @@
 #include "photoion_state.h"
 #include "photoion_phys.h"
 #include "photoion_const.h"
+#include "photoion_atomdata.h"
 
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
@@ -754,6 +755,141 @@ void pion_highn_line_opacity(double **Nion, double sigmav_rad,
 	  ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
 	  ALPHA=ga/(4.*PI*DELTANUD);
 	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  }
+}
+
+/* Put one FAC pi_short record where the photoionization table code reads it:
+ * the globals THRESHOLD and ANGULAR (pion_pisigma and pion_dfdE use both),
+ * LOWE_EGRID/LOWE_PIGRID with their log10 transforms, and the 6-point spline.
+ * g_i and g_j come back with the +1 every caller applied. This is the body of
+ * the models' read loop, after the fscanf calls. */
+void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g_j)
+{
+  int k;
+
+  if (LOWE_GRIDNUM != PION_LOWE_N) pion_error("pion_fac_load_record: LOWE_GRIDNUM is not 6");
+  THRESHOLD=r->THRESHOLD;
+  ANGULAR=r->ANGULAR;
+  *g_i=r->g_i+1.;
+  *g_j=r->g_j+1.;
+  for (k=1;k<=LOWE_GRIDNUM;++k) {
+    LOWE_EGRID[k]=r->grid[k-1][0];
+    LOWE_PIGRID[k]=r->grid[k-1][2];
+    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
+    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
+  }
+  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);
+}
+
+/* The 20000-point photoionization table for the record loaded last: zero
+ * (1e-90) below threshold, the 6-point spline up to its last node (open issue
+ * 7 covers the region below its first node), the FAC fit above. Then log10
+ * and a spline in PIGRID/PIGRID_2. */
+void pion_fac_build_table(double g_i, const double p[4])
+{
+  int k;
+  double p0=p[0], p1=p[1], p2=p[2], p3=p[3];
+
+  /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
+  for (k=1;k<=GRIDNUM;++k) {
+    if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
+    else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+    else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+  }
+  for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
+  pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
+}
+
+/* Edges of one FAC pi_short file: build each record's table if the edge
+ * clears tau_lim at gate_factor*threshold, and add its opacity. */
+static void fac_edges(double Nion_ion, int shell, int Z, int nelec, double gate_factor, double tau_edge_p[])
+{
+  int r, n;
+  double g_i, g_j;
+  const struct PION_FAC_PIREC *rec = pion_ad_fac_pi(shell, Z, nelec, &n);
+
+  for (r=0;r<n;++r) {
+    pion_fac_load_record(&rec[r], &g_i, &g_j);
+    if (Nion_ion*pion_pisigma(g_i,rec[r].p[0],rec[r].p[1],rec[r].p[2],rec[r].p[3],gate_factor*THRESHOLD) >= tau_lim) {
+      pion_fac_build_table(g_i, rec[r].p);
+      /* calculate opacity of given edge and modify "tau" accordingly */
+      pion_fac_edge_opacity(Nion_ion,THRESHOLD,tau_edge_p);
+    }
+  }
+}
+
+/* Lines of one FAC tr_short file inside [EMIN, EMAX] that clear tau_lim. */
+static void fac_lines(double Nion_ion, double sigmav_rad, int shell, int Z, int nelec,
+                      double tau_exc_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int r, n;
+  double g_i, ftemp, E0, DELTANUD, OSCILLATOR, ga, ALPHA;
+  const struct PION_FAC_TRROW *row = pion_ad_fac_tr(shell, Z, nelec, &n);
+
+  for (r=0;r<n;++r) {
+    g_i=row[r].g_i+1.;
+    ftemp=row[r].f/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
+    E0=row[r].en;
+    E0=E0*doppler_rad;
+    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion_ion) {
+      OSCILLATOR=ftemp;
+      ga=row[r].A;
+      ALPHA=ga/(4.*PI*DELTANUD);
+      pion_line_opacity(Nion_ion,E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc_p,pad_lo,pad_hi,clamp_both);
+    }
+  }
+}
+
+/* The three FAC shell blocks that were copied into every model:
+ *   PION_FAC_L_NE_NI  L shell, Ne..Ni, 3-10 electrons (and Ni's 1-2)
+ *   PION_FAC_L_C_O    L shell, C..O,  3-8 electrons
+ *   PION_FAC_M        M shell, Mg..Ni, 11-28 electrons; lines before edges,
+ *                     and the edge gate at 1.01*threshold
+ * do_edges is 0 only in neutral, which takes its edges from neutral.tau.
+ * do_lines is the model's `lines`. Edges add to tau_edge_p and lines to
+ * tau_exc_p, each in the original order. Nion and sigmav_rad are parameters
+ * because the absorption models shadow both globals. */
+void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
+                            int do_edges, int do_lines, int verbose,
+                            double tau_edge_p[], double tau_exc_p[],
+                            double pad_lo, double pad_hi, int clamp_both)
+{
+  int element, electron;
+
+  if (which == PION_FAC_L_NE_NI) {
+    for (element=10;element<=28;++element) {
+      for (electron=1;electron<=10;++electron) {
+	if (Nion[element][electron] && (electron>=3 || element==28)) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_L_SHELL,element,electron,1.0,tau_edge_p);
+	  if (do_lines && electron>=3)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_L_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  } else if (which == PION_FAC_L_C_O) {
+    for (element=6;element<=8;++element) {
+      for (electron=3;electron<=8;++electron) {
+	if (Nion[element][electron]) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_L_SHELL,element,electron,1.0,tau_edge_p);
+	  if (do_lines)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_L_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  } else if (which == PION_FAC_M) {
+    for (element=12;element<=28;++element) {
+      for (electron=11;electron<=28;++electron) {
+	if (Nion[element][electron]) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_lines)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_M_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_M_SHELL,element,electron,1.01,tau_edge_p);
 	}
       }
     }

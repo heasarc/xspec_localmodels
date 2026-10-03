@@ -68,17 +68,13 @@ int xiabs
   int ijunk;
   double djunk;
 
-  double g_i,g_j;
 
   double ELO=1.e-3,EHI=1.e6;  /* MAKE SURE THIS RANGE IS OK!!! CHECK HERE!!! */
 
-  double en,Atemp,ftemp,ga;
 
-  char *root,*element_name,*temp;
-  const char *ext;   /* always a string literal, never owned */
+  char *temp;
   int i,j,k,n;
   /* *.rr file */
-  double p0,p1,p2,p3;
 
 
   double earlo,earhi;
@@ -87,7 +83,6 @@ int xiabs
 
   int ELEMENTS=12;
 
-  double E0=0.,DELTANUD,ALPHA,OSCILLATOR;
 
   int element,electron;
 
@@ -143,8 +138,6 @@ int xiabs
 
   /* FILE NAMES */
 
-  root=malloc(pathlen);
-  element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
   temp=malloc(pathlen);
   sjunk=malloc(50);
   sjunk1=malloc(50);
@@ -400,226 +393,17 @@ int xiabs
     pion_highn_line_opacity(Nion,sigmav_rad,pion_ad_highn(),list,ELEMENTS,HIGHN,oshe,tau_exc,1.0,1.0,0);
   }
 
-  /* File root for L-shell input files for Ne through Ca */
   if (verbose) printf("L-shell ions:  Ne through Ni\n");
-  for (element=10;element<=28;++element) {
-    for (electron=1;electron<=10;++electron) {
-      /* Need H- and He-like photoionization cross-sections */
-      if (Nion[element][electron] && (electron>=3 || element==28)) {
-	if (element == 10) sprintf(element_name,"Ne");
-	if (element == 12) sprintf(element_name,"Mg");
-	if (element == 13) sprintf(element_name,"Al");
-	if (element == 14) sprintf(element_name,"Si");
-	if (element == 16) sprintf(element_name,"S");
-	if (element == 18) sprintf(element_name,"Ar");
-	if (element == 20) sprintf(element_name,"Ca");
-	if (element == 26) sprintf(element_name,"Fe");
-	if (element == 28) sprintf(element_name,"Ni");
-	snprintf(root,pathlen,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
-	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-	/* for photoionization cross-sections */
-	ext="pi_short"; 
-	if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
-	else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
-	input=fopen(temp,"r");
-	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
-	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
-	  g_i=g_i+1.;
-	  g_j=g_j+1.;
-	  fscanf(input,"%lf%lf%lf%lf",&p0,&p1,&p2,&p3);
-	  for (k=1;k<=LOWE_GRIDNUM;++k) {
-	    fscanf(input,"%lf%lf%lf%lf",&(LOWE_EGRID[k]),&djunk,&(LOWE_PIGRID[k]),&djunk);
-	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
-	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
-	  }
-	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
-	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
-	    for (k=1;k<=GRIDNUM;++k) {
-	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
-	    }
-	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
-	    
-	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
-	  }
-	}
-	fclose(input);
-	
-	if (lines) {
-	  if (electron>=3) {
-	    ext="tr_short"; 
-	    if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
-	    else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
-	    input=fopen(temp,"r");
-	    while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	      j=j+1;
-	      i=i+1;
-	      g_i=g_i+1.;
-	      g_j=g_j+1.;
-	      ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	      E0=en;
-	      E0=E0*doppler_rad;
-	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	      if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-		OSCILLATOR=ftemp;
-		ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-		ALPHA=ga/(4.*PI*DELTANUD);
-		pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	      }
-	    }
-	    fclose(input);
-	  }
-	}
-      }
-    }
-  }
+  pion_fac_shell_opacity(PION_FAC_L_NE_NI,Nion,sigmav_rad,1,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
 
 
-  /* File root for L-shell input files for Ne through Ca */
   if (verbose) printf("L-shell ions:  C through O\n");
-  for (element=6;element<=8;++element) {
-    for (electron=3;electron<=8;++electron) {
-      if (Nion[element][electron]) {
-	if (element == 6) sprintf(element_name,"C");
-	if (element == 7) sprintf(element_name,"N");
-	if (element == 8) sprintf(element_name,"O");
-	snprintf(root,pathlen,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
-	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-	/* for photoionization cross-sections */
-	ext="pi_short"; 
-	if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
-	else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
-	input=fopen(temp,"r");
-	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
-	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
-	  g_i=g_i+1.;
-	  g_j=g_j+1.;
-	  fscanf(input,"%lf%lf%lf%lf",&p0,&p1,&p2,&p3);
-	  for (k=1;k<=LOWE_GRIDNUM;++k) {
-	    fscanf(input,"%lf%lf%lf%lf",&(LOWE_EGRID[k]),&djunk,&(LOWE_PIGRID[k]),&djunk);
-	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
-	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
-	  }
-	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= tau_lim) {
-	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
-	    for (k=1;k<=GRIDNUM;++k) {
-	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
-	    }
-	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
-	    
-	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
-	  }
-	}
-	fclose(input);
-	
-	if (lines) {
-	  ext="tr_short"; 
-	  if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
-	  else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
-	  input=fopen(temp,"r");
-	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	    j=j+1;
-	    i=i+1;
-	    g_i=g_i+1.;
-	    g_j=g_j+1.;
-	    ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	    E0=en;
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-	      OSCILLATOR=ftemp;
-	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	      ALPHA=ga/(4.*PI*DELTANUD);
-	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	    }
-	  }
-	  fclose(input);
-	}
-      }
-    }
-  }
+  pion_fac_shell_opacity(PION_FAC_L_C_O,Nion,sigmav_rad,1,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
 
 
   /* M-shell ions */
   if (verbose) printf("M-shell ions:  Mg through Ni\n");
-  for (element=12;element<=28;++element) {
-    for (electron=11;electron<=28;++electron) {
-      if (Nion[element][electron]) {
-	if (element == 12) sprintf(element_name,"Mg");
-	if (element == 13) sprintf(element_name,"Al");
-	if (element == 14) sprintf(element_name,"Si");
-	if (element == 16) sprintf(element_name,"S");
-	if (element == 18) sprintf(element_name,"Ar");
-	if (element == 20) sprintf(element_name,"Ca");
-	if (element == 26) sprintf(element_name,"Fe");
-	if (element == 28) sprintf(element_name,"Ni");
-	snprintf(root,pathlen,"%s/photoion_dat/M_shell/%s",DATADIR,element_name);
-	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-
-	if (lines) {
-	  /* Transitions */
-	  ext="tr_short"; 
-	  snprintf(temp,pathlen,"%s%2da.%s",root,electron,ext);
-	  input=fopen(temp,"r");
-	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	    g_j=g_j+1.;
-	    g_i=g_i+1.;
-	    ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	    E0=en;
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-	      OSCILLATOR=ftemp;
-	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	      ALPHA=ga/(4.*PI*DELTANUD);
-	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	    }
-	  }
-	  fclose(input);
-	}      
-
-	/* Edges */
-	ext="pi_short"; 
-	snprintf(temp,pathlen,"%s%2da.%s",root,electron,ext);
-	input=fopen(temp,"r");
-	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
-	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
-	  g_i=g_i+1.;
-	  g_j=g_j+1.;
-	  fscanf(input,"%lf%lf%lf%lf",&p0,&p1,&p2,&p3);
-	  for (k=1;k<=LOWE_GRIDNUM;++k) {
-	    fscanf(input,"%lf%lf%lf%lf",&(LOWE_EGRID[k]),&djunk,&(LOWE_PIGRID[k]),&djunk);
-	    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
-	    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
-	  }
-	  pion_spline(LOWE_EGRID,LOWE_PIGRID,LOWE_GRIDNUM,1.e40,1.e40,LOWE_PIGRID_2);	  
-	  if (Nion[element][electron]*pion_pisigma(g_i,p0,p1,p2,p3,1.01*THRESHOLD) >= tau_lim) {
-	    /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
-	    for (k=1;k<=GRIDNUM;++k) {
-	      if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
-	      else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
-	      else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
-	    }
-	    for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-	    pion_spline(EGRID,PIGRID,GRIDNUM,1.e40,1.e40,PIGRID_2);
-	    
-	    /* calculate opacity of given edge and modify "tau" accordingly */
-	    pion_fac_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
-	  }
-	}
-	fclose(input);
-      }
-    }
-  }
+  pion_fac_shell_opacity(PION_FAC_M,Nion,sigmav_rad,1,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
   
 
   if (0 && sigmav_rad) {
@@ -690,7 +474,6 @@ int xiabs
 
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
-  free(root);
   free(temp);
   free(sjunk);
   free(sjunk1);
@@ -698,7 +481,6 @@ int xiabs
   free(sjunk3);
   free(sjunk4);
   free(line);
-  free(element_name);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
