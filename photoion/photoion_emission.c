@@ -462,6 +462,11 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
 	  }
 	  pion_spline(Tvec,Yvec,PION_REC_TEMPERATURES,1.e40,1.e40,Yvec2);
 	  strength=pow(10.,pion_loglinestrength(log10(Tion[element][electron]),PION_REC_TEMPERATURES));
+	  /* line.dat has no wavelength (0) for He-like LINE 7 of Ca, Fe and Ni.
+	   * The energy would be infinite and its bin index an int overflow (open
+	   * issue 15); the line was never added anyway, since that index fell
+	   * outside the spectrum. */
+	  if (helium[element].lambda[LINE] <= 0.) continue;
 	  E0=HC_KEV_ANGSTROM/helium[element].lambda[LINE]*1000.;
 	  E0=doppler_trans*E0;
 	  k=(int) ((E0-EMIN+0.5*EBIN)/EBIN);
