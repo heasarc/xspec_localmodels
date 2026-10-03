@@ -392,7 +392,10 @@ int phxi
 
   /* H- and He-like cross sections for C, N, and O */
   if (verbose) printf("H- and He-like edge cross sections for H,He,C to Ni...\n");
-  pion_verner_edges(Nion,vernerionizsigma,partialsigma,npartial,28,tau_edge);
+  /* H/He-like Verner edges up to Fe only: Ni's H/He-like edges come from FAC
+   * (Ni01a/Ni02a in the L-shell block), and verner_photo.dat now has Ni rows
+   * for the emission rates, which here would count them twice. */
+  pion_verner_edges(Nion,vernerionizsigma,partialsigma,npartial,26,tau_edge);
   if (verbose) printf("Determining LOW-n Photoexcitation Cross Sections & Opacity for C to Ni...\n");
   highn=pion_ad_highn();
   line_rows=pion_ad_line_rows(&nline_rows);

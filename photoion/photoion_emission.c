@@ -20,6 +20,22 @@
 #define sqr(X) ((X)*(X))
 #define cube(X) ((X)*(X)*(X))
 
+/* The H/He-like rates and recombination spectra need the ion's Verner
+ * photoionization fit. Without one (Emax 0) they would be 0/0 = NaN in
+ * every bin -- what Ni gave before verner_photo.dat had Ni rows (open issue
+ * 14). Skip such an ion instead, and say so once. */
+static int have_verner(const struct VERNER_STRUCT *v, int element, int electron)
+{
+  static int warned[31][3];
+  if (v->Emax > 0.) return 1;
+  if (element >= 0 && element <= 30 && electron >= 1 && electron <= 2 && !warned[element][electron]) {
+    printf("PHOTOION: no Verner photoionization fit for Z=%d with %d electron%s; its recombination emission is left out\n",
+           element, electron, electron == 1 ? "" : "s");
+    warned[element][electron] = 1;
+  }
+  return 0;
+}
+
 void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
                               int lines, int verbose,
                               const int list[], int ELEMENTS, int HIGHN,
@@ -350,6 +366,7 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
       element=list[i];
       for (electron=1;electron<=2;++electron) {
 	if (Nion[element][electron]) {
+	  if (!have_verner(&vernerionizsigma[element][electron],element,electron)) continue;
 	  THRESHOLD=vernerionizsigma[element][electron].Eth;
 	  int_junk=0.;
 	  for (k=1;k<=SPECBINS;++k) {
@@ -371,6 +388,7 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
       element=list[i];
       electron=1;
       if (Nion[element][electron]) {
+	if (!have_verner(&vernerionizsigma[element][electron],element,electron)) continue;
 	R=ratePI[element][electron];
 	for (k=1;k<=PION_REC_TEMPERATURES;++k) {
 	  Tvec[k]=log10(H_rec[element].T[k]);
@@ -432,6 +450,7 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
       element=list[i];
       electron=2;
       if (Nion[element][electron]) {
+	if (!have_verner(&vernerionizsigma[element][electron],element,electron)) continue;
 	R=ratePI[element][electron];
 	for (k=1;k<=PION_REC_TEMPERATURES;++k) {
 	  Tvec[k]=log10(He_rec[element].T[k]);
