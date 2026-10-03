@@ -69,7 +69,7 @@ documented. In every record sampled, column 3 divided by column 4 is
 
 **`line.dat`**: wavelengths [Å], A and f for H-like lines 1–6 (Lyα…, then
 the continuum edge) and He-like lines 1–9 (f, i, r, …, then the edge), for
-every element. Source, documented (K03 §4): FAC, with the important H- and
+C, N, O, F, Ne, Na, Mg, Al, Si, S, Ar, Ca, Fe and Ni. Source, documented (K03 §4): FAC, with the important H- and
 He-like transitions checked and, where needed, corrected against Verner et
 al. (1996), Verner, Verner & Ferland (1996, ADNDT 64, 1) and NIST.
 - The continuum-edge wavelengths match the FAC ground-state thresholds in
@@ -78,7 +78,6 @@ al. (1996), Verner, Verner & Ferland (1996, ADNDT 64, 1) and NIST.
 - Known errors and gaps:
   - He-like lines 7–8 (1s6p, 1s7p) are blank (λ, A and f all 0) for Ca, Fe
     and Ni, and line 8 is blank for Ar.
-  - Every P (Z = 15) row is a copy of the S row.
 
 **`highn.dat`**: H- and He-like lines with upper levels n = 6–100:
 `Z N n E f`. The energies are documented (K03: photoexcitation to n ≤ 100 for
@@ -129,4 +128,6 @@ bound-electron scattering is included.
 - **2026**: `line.dat`'s Ca XX continuum-edge wavelength was a copy of
   S XVI's (3.5483 Å). It is now 2.2667 Å, from the FAC Ca XX threshold
   (5469.8 eV in `Ca01a.pi_short`), the source of the other edges.
+- **2026**: the P (Z = 15) rows were removed from `line.dat`. Every one
+  was a copy of the S row.
 - **2026**: `line.dat` repaired: see the photoion PR history (heasarc/xspec_localmodels #2).
