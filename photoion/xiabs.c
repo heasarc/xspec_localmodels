@@ -465,8 +465,13 @@ int xiabs
   for (element=1;element<=26;++element) {
     for (electron=1;electron<=2;++electron) {
       if (Nion[element][electron]) {
-	THRESHOLD=vernerionizsigma[element][electron].Eth;
-	pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_edge);
+	if (element==2 && electron==2) {
+	  THRESHOLD=24.58;
+	  pion_HeI_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
+	} else {
+	  THRESHOLD=vernerionizsigma[element][electron].Eth;
+	  pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_edge);
+	}
       }
     }
   }
