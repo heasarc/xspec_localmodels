@@ -115,12 +115,30 @@ run.
 ## `neutral.tau`
 
 The opacity per H atom [cm²] of a neutral medium, on a grid of 100 000
-bins from 1 eV to 15 keV. **Source: not
-documented.** Inferred: below 2 keV it agrees within 2–5% with neutral-atom
-photoabsorption (Verner & Yakovlev 1995, with Yan et al. for He) weighted by
-the `abundance.dat` (WAM00 ISM) abundances. Above about 7 keV it exceeds that
-by 0.97–0.99 × n_e σ_T (n_e = 1.2 electrons per H), which suggests
-bound-electron scattering is included.
+bins from 1 eV to 15 keV. Columns: bin-centre energy [keV], half bin width
+[keV], opacity. **Source: not documented; inferred, firmly.** It is the
+photoabsorption of the `vneutral` model of this package at its default
+parameters, plus electron scattering n_e σ_T with n_e = 1.2 per H and
+σ_T = 6.6525×10⁻²⁵ cm²:
+- Its energy grid is `vneutral`'s default grid, bin for bin, and its C,
+  O, Ne and Fe K edges fall in the same bins as `vneutral`'s.
+- Above 14 eV it matches `vneutral` at solar abundances (`abundance.dat`,
+  i.e. WAM00 ISM) to 0.2% in the median bin and 1.6% in the worst 0.1%,
+  provided He I is the Verner et al. (1996) fit rather than Yan et al.
+  (1998), which `vneutral` uses now.
+- Below 5 eV, under every ionization threshold, it is 1.2 σ_T to 10⁻⁶.
+  At 10–13 eV, where only low-ionization-potential atoms absorb, it
+  matches `vneutral` to 0.5%.
+- The three header lines (`READ SERR 1`, `@neutral.pco`, `!`) are the
+  output of XSPEC's `wdata` plot command, so the table was written from
+  an XSPEC plot.
+- It is **not** XSPEC's `tbabs`, current or the 2000 version
+  (`TBABSVERSION 1`): those differ by 3–13%, as they include H₂ and dust
+  grains. It is close to `phabs` with `abund wilm` and `xsect vern` (0.1%
+  at 20–520 eV), which is the same atomic physics.
+
+Known difference from the rest of the package: He I is the Verner fit,
+which falls 13–23% below Yan et al. at 1–10 keV.
 
 ## Corrections and additions since the original release
 
