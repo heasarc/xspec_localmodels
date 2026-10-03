@@ -19,4 +19,7 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
                               double **ratePI, double **rateRR, double **rateDR,
                               double specRR[], double specDR[]);
 
+/* INPUT > 0: the tabulated continuum from input.qdp. 1 if the file is missing. */
+int pion_input_continuum(double redshift, int type, int verbose, double Labsorb[]);
+
 #endif

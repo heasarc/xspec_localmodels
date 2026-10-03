@@ -15,10 +15,6 @@
 
 #define cube(X) ((X)*(X)*(X))
 
-/* Longest suffix appended to PHOTOION_DIR anywhere in the package is under
- * 50 characters ("/photoion_dat/verner_partial_PIsigmas.dat" is 41). */
-#define PATH_PAD 64
-
 enum { UNREAD = 0, LOADED, MISSING };
 
 static char *datadir = NULL;     /* the directory the cache belongs to */
@@ -47,7 +43,11 @@ static struct rowfile fac_pi[2][29][29], fac_tr[2][29][29];   /* [shell][Z][nele
 static struct rowfile trates_f[29], trsh[29][29], rrl[29][29], rrs[29][29];
 static struct H_REC_STRUCT  h_rec[29];
 static struct HE_REC_STRUCT he_rec[29];
-static int st_hrec, st_herec;
+static int st_hrec, st_herec, st_xi, st_ntau;
+const int PION_XI_Z[13] = {0, 1, 2, 6, 7, 8, 10, 12, 14, 16, 18, 20, 26};
+static struct PION_XI_IONS xi_ions;
+static struct PION_NTAU_ROW *ntau = NULL;
+static int nntau = 0;
 
 static void free_rowfiles(struct rowfile *rf, size_t count)
 {
@@ -73,6 +73,15 @@ static void reset(void)
   memset(h_rec, 0, sizeof h_rec);
   memset(he_rec, 0, sizeof he_rec);
   st_hrec = st_herec = UNREAD;
+  {
+    int jj;
+    for (jj = 0; jj < 13; ++jj) { free(xi_ions.xi[jj]); free(xi_ions.frac[jj]); }
+    memset(&xi_ions, 0, sizeof xi_ions);
+  }
+  free(ntau);
+  ntau = NULL;
+  nntau = 0;
+  st_xi = st_ntau = UNREAD;
   memset(abund, 0, sizeof abund);
   memset(oshe_raw, 0, sizeof oshe_raw);
   memset(oshe_set, 0, sizeof oshe_set);
@@ -102,10 +111,6 @@ int pion_ad_failed(void)
   return failed;
 }
 
-int pion_ad_pathlen(void)
-{
-  return (int) (datadir ? strlen(datadir) : 0) + PATH_PAD;
-}
 
 /* Open photoion_dat/<name> under the current directory. On failure, report
  * once per directory, mark the dataset MISSING and raise the flag. */
@@ -699,5 +704,64 @@ const struct HE_REC_STRUCT *pion_ad_he_rec(void)
   }
   usable(&st_herec);
   return he_rec;
+}
+
+/* xi_ions.dat: "%d" (grid size), then for each element in turn, per grid
+ * point "%d%lf" (index, xi) and Z+1 fractions "%lf" -- the models' fscanf
+ * sequence, unchanged. */
+const struct PION_XI_IONS *pion_ad_xi_ions(void)
+{
+  int i, j, k, Z, ijunk, nxi;
+  FILE *input;
+
+  if (st_xi == UNREAD) {
+    input = open_data("xi_ions.dat", &st_xi);
+    if (input == NULL) return NULL;
+    if (fscanf(input,"%d",&nxi) != 1 || nxi < 1) {
+      printf("PHOTOION: xi_ions.dat: no grid size\n");
+      fclose(input); st_xi = MISSING; failed = 1; return NULL;
+    }
+    xi_ions.nxi = nxi;
+    for (j = 1; j <= 12; ++j) {
+      Z = PION_XI_Z[j];
+      xi_ions.xi[j] = calloc((size_t) nxi, sizeof(double));
+      xi_ions.frac[j] = calloc((size_t) (Z+1) * nxi, sizeof(double));
+      if (!xi_ions.xi[j] || !xi_ions.frac[j]) { pion_error("photoion_atomdata: out of memory"); break; }
+      for (i = 1; i <= nxi; ++i) {
+        fscanf(input,"%d%lf",&ijunk,&xi_ions.xi[j][i-1]);
+        for (k = 1; k <= Z+1; ++k) fscanf(input,"%lf",&xi_ions.frac[j][(k-1)*nxi + i-1]);
+      }
+    }
+    fclose(input);
+    st_xi = LOADED;
+  }
+  if (!usable(&st_xi)) return NULL;
+  return &xi_ions;
+}
+
+const struct PION_NTAU_ROW *pion_ad_neutral_tau(int *n)
+{
+  char **lines;
+  int nl, k, r;
+
+  *n = 0;
+  if (st_ntau == UNREAD) {
+    FILE *input = open_data("neutral.tau", &st_ntau);
+    if (input == NULL) return NULL;
+    lines = read_lines(input, &nl);
+    fclose(input);
+    ntau = calloc(nl ? nl : 1, sizeof *ntau);
+    if (ntau == NULL) { free_lines(lines, nl); pion_error("photoion_atomdata: out of memory"); return NULL; }
+    for (k = 0; k < nl; ++k) {
+      r = sscanf(lines[k],"%lf%lf%lf",&ntau[k].v[0],&ntau[k].v[1],&ntau[k].v[2]);
+      ntau[k].n = r > 0 ? r : 0;
+    }
+    free_lines(lines, nl);
+    nntau = nl;
+    st_ntau = LOADED;
+  }
+  if (!usable(&st_ntau)) return NULL;
+  *n = nntau;
+  return ntau;
 }
 

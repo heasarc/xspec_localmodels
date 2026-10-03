@@ -56,7 +56,6 @@ int phxi
   const struct PION_LINE_ROW *line_rows;   /* line.dat, cached */
   int nline_rows;
   const struct HIGHER_ORDER_STRUCT (*highn)[3];
-  int pathlen;     /* buffer size for any data path under DATADIR (open issue 2) */
 
   
   
@@ -67,7 +66,6 @@ int phxi
 
   double int_ans;
 
-  int LENGTH=400;
 
   double Elo,Ehi; /* Voigt function param.'s */
   double Ewidth,earBIN;
@@ -76,15 +74,12 @@ int phxi
   
 
   /* junk values for strings, ints, and floats */
-  char *line;
-  int ijunk;
   double djunk;
 
 
   double ELO=1.e-3,EHI=1.e6;  /* MAKE SURE THIS RANGE IS OK!!! CHECK HERE!!! */
 
 
-  char *temp;
   int i,j,k,n;
   /* *.rr file */
 
@@ -114,7 +109,7 @@ int phxi
 
   double **H_excite, **He_excite;
 
-  double redshift,**ion,N_H;
+  double redshift,N_H;
   double H0_cosmo=0.,Omega_m_cosmo=0.; /* from XSPEC, when D=0 */
   int fileincr;
 
@@ -129,7 +124,7 @@ int phxi
   int DIST,lines=0;
 
   FILE *E_specfile=NULL,*l_specfile=NULL;
-  FILE *input,*E_output=NULL,*l_output=NULL;
+  FILE *E_output=NULL,*l_output=NULL;
   char *specfile_name;
 
   /* Initialize the model array */
@@ -159,7 +154,6 @@ int phxi
 
   DATADIR=FGMSTR(name);
   pion_ad_begin(DATADIR);
-  pathlen=pion_ad_pathlen();
 
   /* Probe for the atomic data before anything is allocated. The open below
    * is checked, but it returns with ~15 allocations already live, and this
@@ -191,9 +185,7 @@ int phxi
 
   /* FILE NAMES */
   specfile_name=malloc(200);
-  temp=malloc(pathlen);
 
-  line=malloc(400);
 
   Nion=pion_dmatrix(1,28,1,28);
   Tion=pion_dmatrix(1,28,1,28);
@@ -249,121 +241,8 @@ int phxi
   fileincr = (int) param[32];
   verbose =(int) param[33];
 
-  snprintf(temp,pathlen,"xi.dat");
-  input=fopen(temp,"r");
-  if (input==NULL) {
-    printf("The file 'xi.dat' must exist in this directory.\n");
-    printf("See $DATADIR/photoion_dat/xi.dat for an example.\n");
-    return 0;
-  }
-  FRACXINUM=0;
-  while (fscanf(input,"%lf%lf",&djunk,&djunk)!=EOF) ++FRACXINUM;
-  fclose(input);
-  xi_frac_grid=pion_dvector(1,FRACXINUM);  
-  frac_grid=pion_dvector(1,FRACXINUM);  
-  
-  input=fopen(temp,"r");
-  for (i=1;i<=FRACXINUM;++i) fscanf(input,"%lf%lf",&(xi_frac_grid[i]),&(frac_grid[i]));
-  fclose(input);
-
-  snprintf(temp,pathlen,"%s/photoion_dat/xi_ions.dat",DATADIR);
-  input=fopen(temp,"r");
-  fscanf(input,"%d",&FIONXINUM);
-  xi_fion_grid=pion_dvector(1,FIONXINUM);  
-  fion_grid=pion_dvector(1,FIONXINUM);  
-  fion_grid_2=pion_dvector(1,FIONXINUM);  
-  ion=pion_dmatrix(1,29,1,FIONXINUM);
-
-  xi_array=pion_dvector(1,XINUM);
-  fion_array=pion_dvector(1,XINUM);
-  fion_array_2=pion_dvector(1,XINUM);
-  for (i=1;i<=XINUM;++i) xi_array[i]=XIMIN+(XIMAX-XIMIN)*((double) i-1)/((double) (XINUM-1));
-
-  /* read in each element - where subscript for ion[2][i] = ROMAN numeral*/
-  /* hydrogen */
-  element=1;
-  N_e=0.;
-  HNORM=0.;
-  for (i=1;i<=FIONXINUM;++i) {
-    fscanf(input,"%d%lf",&ijunk,&(xi_fion_grid[i]));
-    for (k=1;k<=element+1;++k) {
-      fscanf(input,"%lf",&(ion[k][i]));
-      ion[k][i]=fabs(ion[k][i]);
-    }
-  }
-  for (k=1;k<=element+1;++k) {
-    for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
-    pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
-    for (i=1;i<=XINUM;++i) fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
-    pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
-
-    electron=element-k+1;
-    if (electron>=1) Nion[element][electron]=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
-    if (electron==0) N_e+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
-    HNORM+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
-  }
-  Nion[1][1]=Nion[1][1]*N_H/HNORM;
-  N_e=N_e*N_H/HNORM;
-  if (verbose) printf("Nion[%2d][%2d]=%e\n",element,element,Nion[element][element]);
-  
-  /* All other elements: He, C, N, O, Ne, Mg, Si, S, Ar, Ca, Fe */
-  /* Aluminum and Nickel not calculated by xstar */
-  list=pion_ivector(1,12);
-  list[1]=1;list[2]=2; list[3]=6; list[4]=7; list[5]=8; list[6]=10; list[7]=12; list[8]=14; list[9]=16; list[10]=18; list[11]=20; list[12]=26;
-  for (j=2;j<=12;++j) {
-    element=list[j];
-    for (i=1;i<=FIONXINUM;++i) {
-      fscanf(input,"%d%lf",&ijunk,&(xi_fion_grid[i]));
-      for (k=1;k<=element+1;++k) {
-	fscanf(input,"%lf",&(ion[k][i]));
-	ion[k][i]=fabs(ion[k][i]);
-      }
-    }
-    for (k=1;k<=element+1;++k) {
-      fion_integrate=0;
-      for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
-      pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
-	/*      printf("%e  %e  %e  %e\n",xi_fion_grid[i],pion_frac(xi_fion_grid[i]),fion_grid[i],ion[k][i]);*/
-      
-      fion_integrate=0;
-      for (i=1;i<=XINUM;++i) {
-	fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
-	if (fion_array[i]!=0.) fion_integrate=1;
-      }
-      if (fion_integrate) {
-	pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
-	electron=element-k+1;
-	if (electron>=1) {
-	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
-	}
-	if (electron>=1) N_e+=((double) (element-electron))*Nion[element][electron];
-	else N_e+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
-      }
-    }
-  }
-
-  for (element=2;element<=28;++element) {
-    for (electron=1;electron<=28;++electron) {
-      if (Nion[element][electron]) {
-        Nion[element][electron]=fabs(Nion[element][electron]);
-	if (verbose) printf("Nion[%2d][%2d]=%e\n",element,electron,Nion[element][electron]);
-      }
-    }
-  }
-  if (verbose) printf("N_e=%e\n",N_e);
-
-  fclose(input);
-
-  pion_free_ivector(list,1,10);
-  pion_free_dvector(xi_frac_grid,1,FRACXINUM);
-  pion_free_dvector(frac_grid,1,FRACXINUM);
-  pion_free_dmatrix(ion,1,29,1,FIONXINUM);
-  pion_free_dvector(xi_fion_grid,1,FIONXINUM);
-  pion_free_dvector(fion_grid,1,FIONXINUM);
-  pion_free_dvector(fion_grid_2,1,FIONXINUM);
-  pion_free_dvector(xi_array,1,XINUM);
-  pion_free_dvector(fion_array,1,XINUM);
-  pion_free_dvector(fion_array_2,1,XINUM);
+  /* Ion columns from the xi distribution (xi.dat in the cwd, xi_ions.dat cached) */
+  if (pion_xi_columns(Nion,&N_e,N_H,ABUND,verbose)) return 0;   /* no xi.dat: as before; the entry probe catches it first */
 
   if (type == 4 || type == 5) {v_trans=v_rad; sigmav_trans=sigmav_rad;}
 
@@ -609,77 +488,7 @@ int phxi
       }
     }
   } else if (INPUT>0) {
-    snprintf(temp,pathlen,"input.qdp");
-    input=fopen(temp,"r");
-    if (input==NULL) {
-      printf("The file 'input.qdp' must exist in this directory.\n");
-      return 0;
-    }
-    for (k=1;k<=3;++k) fgets(line,LENGTH,input);
-    /* Get # of data lines in input file */
-    INPUT_SIZE=0;
-    while (fgets(line,LENGTH,input) != NULL) ++INPUT_SIZE;
-    fclose(input);
-    E_input=pion_dvector(1,INPUT_SIZE);
-    L_input=pion_dvector(1,INPUT_SIZE);
-    L_input_2=pion_dvector(1,INPUT_SIZE);
-    EtimesL_input=pion_dvector(1,INPUT_SIZE);
-    EtimesL_input_2=pion_dvector(1,INPUT_SIZE);
-    input=fopen(temp,"r");
-    for (k=1;k<=3;++k) fgets(line,LENGTH,input);
-    k=1;
-    while (fgets(line,LENGTH,input) != NULL) {
-      sscanf(line,"%lf%lf%lf",&(E_input[k])/* keV */,&HALFBIN_SIZE/* keV */,&(L_input[k])/* Flux units!!! [ph/cm^2/s/keV] */);
-      if (INPUT_SHIFT) {E_input[k]=1000.*(1.+redshift)*E_input[k]; /* to convert from keV to eV */
-      } else {E_input[k]=1000.*E_input[k];}
-      HALFBIN_SIZE=1000.*HALFBIN_SIZE;
-      L_input[k]=4.*PI*sqr(D)*L_input[k]/1000.;
-      EtimesL_input[k]=E_input[k]*L_input[k];
-      if (k==1) L_EMIN=E_input[1]-HALFBIN_SIZE;
-      ++k;
-    }
-    fclose(input);
-    L_EMAX=E_input[INPUT_SIZE]+HALFBIN_SIZE;
-    pion_spline(E_input,EtimesL_input,INPUT_SIZE,1.e40,1.e40,EtimesL_input_2);
-    LinterpNORM=1.;
-    if (L_X>0.) {
-      djunk=pion_integrate(pion_EtimesL,1.001*L_EMIN,0.999*L_EMAX);
-      LinterpNORM=L_X*ergstoeV/djunk;
-      if (verbose) printf("LinterpNORM = %e\n",LinterpNORM);
-    }
-    pion_spline(E_input,L_input,INPUT_SIZE,1.e40,1.e40,L_input_2);
-    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-    if (type==4) { /* Filled cone - rec. cont. (lower limit) */
-      for (k=1;k<=SPECBINS;++k)	{
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    } else if (type==5) { /* Filled cone - rec. cont. (upper limit) */
-      for (k=1;k<=SPECBINS;++k) {
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    } else {
-      for (k=1;k<=SPECBINS;++k) {
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k])*(1.-exp(-tau[k]))/tau[k];
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    }
+    if (pion_input_continuum(redshift,type,verbose,Labsorb)) return 0;   /* no input.qdp: as before; the entry probe catches it first */
   }
 
   if (type>1) {
@@ -895,8 +704,6 @@ int phxi
     
   
   /* Free all the memory */
-  free(temp);
-  free(line);
   /* These were freed inside the conditional block that used them -- `if
    * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
    * top is unconditional, so each leaked whenever its branch was skipped.

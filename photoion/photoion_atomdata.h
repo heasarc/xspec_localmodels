@@ -24,9 +24,6 @@ void pion_ad_begin(const char *datadir);
 /* Nonzero if any data file could not be opened since pion_ad_begin. */
 int pion_ad_failed(void);
 
-/* A buffer size that holds any data path under the current directory. */
-int pion_ad_pathlen(void);
-
 /* abundance.dat into ABUND[1..30], zero where the file has no entry. */
 void pion_ad_abundance(double ABUND[]);
 
@@ -81,5 +78,22 @@ const struct PION_FAC_PIREC *pion_ad_rr_short(int Z, int nelec, int *n);
 /* H_recombination.dat and He_recombination.dat, indexed [0..28] by Z. */
 const struct H_REC_STRUCT *pion_ad_h_rec(void);
 const struct HE_REC_STRUCT *pion_ad_he_rec(void);
+
+/* xi_ions.dat: ion fractions on a grid of xi, for the 12 elements xstar
+ * computes (H He C N O Ne Mg Si S Ar Ca Fe, in that file order). For element
+ * j (1..12, of Z = PION_XI_Z[j]): xi[j][i] and frac[j][(k-1)*nxi + i-1], for
+ * i = 1..nxi and k = 1..Z+1, raw as the file gives them. */
+struct PION_XI_IONS {
+  int nxi;
+  double *xi[13];
+  double *frac[13];
+};
+extern const int PION_XI_Z[13];
+const struct PION_XI_IONS *pion_ad_xi_ions(void);
+
+/* neutral.tau, one entry per line, as `sscanf(line,"%lf%lf%lf",...)` left it:
+ * n fields converted (0 for the header lines), then the values. */
+struct PION_NTAU_ROW { int n; double v[3]; };
+const struct PION_NTAU_ROW *pion_ad_neutral_tau(int *n);
 
 #endif

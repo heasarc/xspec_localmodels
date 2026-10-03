@@ -66,7 +66,6 @@ int miabs
   double earBIN,Ewidth;
 
   /* junk values for strings, ints, and floats */
-  char *line;
   double djunk;
 
 
@@ -123,7 +122,6 @@ int miabs
 
   /* FILE NAMES */
 
-  line=malloc(400);
 
 
   ABUND=pion_dvector(1,30);
@@ -548,7 +546,6 @@ int miabs
 
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
-  free(line);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);

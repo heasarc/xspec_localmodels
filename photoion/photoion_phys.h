@@ -152,6 +152,7 @@ void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
                             int do_edges, int do_lines, int verbose,
                             double tau_edge_p[], double tau_exc_p[],
                             double pad_lo, double pad_hi, int clamp_both);
+int pion_xi_columns(double **Nion, double *N_e_p, double N_H, const double ABUND[], int verbose);
 void pion_verner_edges(double **Nion,
                        const struct VERNER_STRUCT (*vernerionizsigma)[31],
                        const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],

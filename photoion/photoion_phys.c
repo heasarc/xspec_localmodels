@@ -34,6 +34,7 @@
 #include "photoion_phys.h"
 #include "photoion_const.h"
 #include "photoion_atomdata.h"
+#include "photoion_integrate.h"
 
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
@@ -894,4 +895,142 @@ void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
       }
     }
   }
+}
+
+/* Ion columns from an ionization-parameter distribution (xiabs, phxi). The
+ * user's xi.dat (cwd, read every evaluation) gives the distribution; the
+ * cached xi_ions.dat gives each ion's fraction as a function of xi; each
+ * column is the distribution-weighted integral, normalized to N_H through
+ * H. Moved from xiabs.c, where phxi had the same code in a different but
+ * equivalent statement order. Returns 1 if xi.dat is missing (the models
+ * return 0 then, as they always did), else 0. Nion and *N_e_p are the
+ * model's (absorption models shadow both globals). */
+int pion_xi_columns(double **Nion, double *N_e_p, double N_H, const double ABUND[], int verbose)
+{
+  int i,j,k,element,electron;
+  double djunk,N_e_acc,**ion;
+  FILE *input;
+  const struct PION_XI_IONS *xd;
+
+  input=fopen("xi.dat","r");
+  if (input==NULL) {
+    printf("The file 'xi.dat' must exist in this directory.\n");
+    printf("See $DATADIR/photoion_dat/xi.dat for an example.\n");
+    return 1;
+  }
+  FRACXINUM=0;
+  while (fscanf(input,"%lf%lf",&djunk,&djunk)!=EOF) ++FRACXINUM;
+  fclose(input);
+  xi_frac_grid=pion_dvector(1,FRACXINUM);  
+  frac_grid=pion_dvector(1,FRACXINUM);  
+  
+  input=fopen("xi.dat","r");
+  for (i=1;i<=FRACXINUM;++i) fscanf(input,"%lf%lf",&(xi_frac_grid[i]),&(frac_grid[i]));
+  fclose(input);
+
+  xd=pion_ad_xi_ions();
+  if (xd==NULL) {   /* reported by the loader; the model fails at its end */
+    pion_free_dvector(xi_frac_grid,1,FRACXINUM);
+    pion_free_dvector(frac_grid,1,FRACXINUM);
+    *N_e_p=0.;
+    return 0;
+  }
+  FIONXINUM=xd->nxi;
+  xi_fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid_2=pion_dvector(1,FIONXINUM);  
+  ion=pion_dmatrix(1,29,1,FIONXINUM);
+
+  /* read in each element - where subscript for ion[2][i] = ROMAN numeral*/
+  /* hydrogen */
+  element=1;
+  HNORM=0.;
+  N_e_acc=0.;
+  for (i=1;i<=FIONXINUM;++i) {
+    xi_fion_grid[i]=xd->xi[1][i-1];
+    for (k=1;k<=element+1;++k) {
+      ion[k][i]=xd->frac[1][(k-1)*FIONXINUM+i-1];
+      ion[k][i]=fabs(ion[k][i]);
+    }
+  }
+
+  xi_array=pion_dvector(1,XINUM);
+  fion_array=pion_dvector(1,XINUM);
+  fion_array_2=pion_dvector(1,XINUM);
+  for (i=1;i<=XINUM;++i) xi_array[i]=XIMIN+(XIMAX-XIMIN)*((double) i-1)/((double) (XINUM-1));
+
+  N_e_acc=0.;
+  HNORM=0.;
+  for (k=1;k<=element+1;++k) {
+    for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
+    pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+    for (i=1;i<=XINUM;++i) fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
+    pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+
+    electron=element-k+1;
+    if (electron>=1) Nion[element][electron]=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    if (electron==0) N_e_acc+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    HNORM+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+  }
+  Nion[1][1]=Nion[1][1]*N_H/HNORM;
+  N_e_acc=N_e_acc*N_H/HNORM;
+  if (verbose) printf("Nion[%2d][%2d]=%e\n",element,element,Nion[element][element]);
+  
+  /* All other elements: He, C, N, O, Ne, Mg, Si, S, Ar, Ca, Fe */
+  /* Aluminum and Nickel not calculated by xstar */
+  for (j=2;j<=12;++j) {
+    element=PION_XI_Z[j];
+    for (i=1;i<=FIONXINUM;++i) {
+      xi_fion_grid[i]=xd->xi[j][i-1];
+      for (k=1;k<=element+1;++k) {
+	ion[k][i]=xd->frac[j][(k-1)*FIONXINUM+i-1];
+	ion[k][i]=fabs(ion[k][i]);
+      }
+    }
+    for (k=1;k<=element+1;++k) {
+      fion_integrate=0;
+      for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
+      pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+	/*      printf("%e  %e  %e  %e\n",xi_fion_grid[i],pion_frac(xi_fion_grid[i]),fion_grid[i],ion[k][i]);*/
+      
+      fion_integrate=0;
+      for (i=1;i<=XINUM;++i) {
+	fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
+	if (fion_array[i]!=0.) fion_integrate=1;
+      }
+      if (fion_integrate) {
+	pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+	electron=element-k+1;
+	if (electron>=1) {
+	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+	}
+	if (electron>=1) N_e_acc+=((double) (element-electron))*Nion[element][electron];
+	else N_e_acc+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+      }
+    }
+  }
+
+  for (element=2;element<=28;++element) {
+    for (electron=1;electron<=28;++electron) {
+      if (Nion[element][electron]) {
+        Nion[element][electron]=fabs(Nion[element][electron]);
+	if (verbose) printf("Nion[%2d][%2d]=%e\n",element,electron,Nion[element][electron]);
+      }
+    }
+  }
+  if (verbose) printf("N_e=%e\n",N_e_acc);
+
+
+  pion_free_dvector(xi_frac_grid,1,FRACXINUM);
+  pion_free_dvector(frac_grid,1,FRACXINUM);
+  pion_free_dmatrix(ion,1,29,1,FIONXINUM);
+  pion_free_dvector(xi_fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid_2,1,FIONXINUM);
+  pion_free_dvector(xi_array,1,XINUM);
+  pion_free_dvector(fion_array,1,XINUM);
+  pion_free_dvector(fion_array_2,1,XINUM);
+
+  *N_e_p=N_e_acc;
+  return 0;
 }

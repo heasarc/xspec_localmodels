@@ -56,7 +56,6 @@ int phsi
   const struct PION_LINE_ROW *line_rows;   /* line.dat, cached */
   int nline_rows;
   const struct HIGHER_ORDER_STRUCT (*highn)[3];
-  int pathlen;     /* buffer size for any data path under DATADIR (open issue 2) */
 
   
   
@@ -67,7 +66,6 @@ int phsi
 
   double int_ans;
 
-  int LENGTH=400;
 
   double Elo,Ehi; /* Voigt function param.'s */
   double Ewidth,earBIN;
@@ -76,14 +74,12 @@ int phsi
   
 
   /* junk values for strings, ints, and floats */
-  char *line;
   double djunk;
 
 
   double ELO=1.e-3,EHI=1.e6;  /* MAKE SURE THIS RANGE IS OK!!! CHECK HERE!!! */
 
 
-  char *temp;
   int i,j,k,n;
   /* *.rr file */
 
@@ -130,7 +126,7 @@ int phsi
 
   int DIST,lines=0;
 
-  FILE *input,*E_specfile=NULL,*l_specfile=NULL,*E_output=NULL,*l_output=NULL;
+  FILE *E_specfile=NULL,*l_specfile=NULL,*E_output=NULL,*l_output=NULL;
   char *specfile_name;
 
   /* initialize photar array */
@@ -160,7 +156,6 @@ int phsi
 
   DATADIR=FGMSTR(name);
   pion_ad_begin(DATADIR);
-  pathlen=pion_ad_pathlen();
 
   /* Probe for the atomic data before anything is allocated. The open below
    * is checked, but it returns with ~15 allocations already live, and this
@@ -196,8 +191,6 @@ int phsi
   /* FILE NAMES */
   specfile_name=malloc(200);
 
-  temp=malloc(pathlen);
-  line=malloc(400);
 
 
   ABUND=pion_dvector(1,30);
@@ -751,77 +744,7 @@ int phsi
       }
     }
   } else if (INPUT>0) {
-    snprintf(temp,pathlen,"input.qdp");
-    input=fopen(temp,"r");
-    if (input==NULL) {
-      printf("The file 'input.qdp' must exist in this directory.\n");
-      return 0;
-    }
-    for (k=1;k<=3;++k) fgets(line,LENGTH,input);
-    /* Get # of data lines in input file */
-    INPUT_SIZE=0;
-    while (fgets(line,LENGTH,input) != NULL) ++INPUT_SIZE;
-    fclose(input);
-    E_input=pion_dvector(1,INPUT_SIZE);
-    L_input=pion_dvector(1,INPUT_SIZE);
-    L_input_2=pion_dvector(1,INPUT_SIZE);
-    EtimesL_input=pion_dvector(1,INPUT_SIZE);
-    EtimesL_input_2=pion_dvector(1,INPUT_SIZE);
-    input=fopen(temp,"r");
-    for (k=1;k<=3;++k) fgets(line,LENGTH,input);
-    k=1;
-    while (fgets(line,LENGTH,input) != NULL) {
-      sscanf(line,"%lf%lf%lf",&(E_input[k])/* keV */,&HALFBIN_SIZE/* keV */,&(L_input[k])/* Flux units!!! [ph/cm^2/s/keV] */);
-      if (INPUT_SHIFT) {E_input[k]=1000.*(1.+redshift)*E_input[k]; /* to convert from keV to eV */
-      } else {E_input[k]=1000.*E_input[k];}
-      HALFBIN_SIZE=1000.*HALFBIN_SIZE;
-      L_input[k]=4.*PI*sqr(D)*L_input[k]/1000.;
-      EtimesL_input[k]=E_input[k]*L_input[k];
-      if (k==1) L_EMIN=E_input[1]-HALFBIN_SIZE;
-      ++k;
-    }
-    fclose(input);
-    L_EMAX=E_input[INPUT_SIZE]+HALFBIN_SIZE;
-    pion_spline(E_input,EtimesL_input,INPUT_SIZE,1.e40,1.e40,EtimesL_input_2);
-    LinterpNORM=1.;
-    if (L_X>0.) {
-      djunk=pion_integrate(pion_EtimesL,1.001*L_EMIN,0.999*L_EMAX);
-      LinterpNORM=L_X*ergstoeV/djunk;
-      if (verbose) printf("LinterpNORM = %e\n",LinterpNORM);
-    }
-    pion_spline(E_input,L_input,INPUT_SIZE,1.e40,1.e40,L_input_2);
-    for (k=1;k<=SPECBINS;++k) abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-    if (type==4) { /* Filled cone - rec. cont. (lower limit) */
-      for (k=1;k<=SPECBINS;++k)	{
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    } else if (type==5) { /* Filled cone - rec. cont. (upper limit) */
-      for (k=1;k<=SPECBINS;++k) {
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    } else {
-      for (k=1;k<=SPECBINS;++k) {
-	if (tau[k]>1.e-5) {
-	  Labsorb[k]=pion_Linterp(E_array[k])*(1.-exp(-tau[k]))/tau[k];
-	  abs_spectrum[k]=pion_Linterp(E_array[k])*exp(-tau[k]);
-	} else {
-	  Labsorb[k]=pion_Linterp(E_array[k]);
-	  abs_spectrum[k]=pion_Linterp(E_array[k]);
-	}
-      }
-    }
+    if (pion_input_continuum(redshift,type,verbose,Labsorb)) return 0;   /* no input.qdp: as before; the entry probe catches it first */
   }
 
   if (type>1) {
@@ -1035,8 +958,6 @@ int phsi
   printf("******************************************************************\n");
   
   /* Free all the memory */
-  free(temp);
-  free(line);
   /* These were freed inside the conditional block that used them -- `if
    * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
    * top is unconditional, so each leaked whenever its branch was skipped.

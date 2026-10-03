@@ -62,7 +62,6 @@ int vneutral
   double earBIN,Ewidth;
 
   /* junk values for strings, ints, and floats */
-  char *line;
   double djunk;
 
 
@@ -120,7 +119,6 @@ int vneutral
 
   /* FILE NAMES */
 
-  line=malloc(400);
 
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
@@ -341,7 +339,6 @@ int vneutral
 
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
-  free(line);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);

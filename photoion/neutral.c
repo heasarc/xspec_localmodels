@@ -46,7 +46,6 @@ int neutral
 
   const struct PION_LINE_ROW *line_rows;   /* line.dat, cached */
   int nline_rows;
-  int pathlen;     /* buffer size for any data path under DATADIR (open issue 2) */
 
   
   
@@ -57,20 +56,18 @@ int neutral
   double Elo,Ehi; /* Voigt function param.'s */
   double earBIN,Ewidth;
 
-  double *E_bin,bin;
+  const struct PION_NTAU_ROW *ntau;   /* neutral.tau, cached */
+  int nntau,r;
   
   /* junk values for strings, ints, and floats */
-  char *line;
   double djunk;
 
 
   double ELO=1.e-3,EHI=1.e6;  /* MAKE SURE THIS RANGE IS OK!!! CHECK HERE!!! */
 
 
-  char *temp;
   int i,j,k,n;
   /* *.en file */
-  double energy;
 
 
   double earlo,earhi;
@@ -95,14 +92,12 @@ int neutral
 
   int DIST,lines;
 
-  FILE *input;
 
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
   DATADIR=FGMSTR(name);
   pion_ad_begin(DATADIR);
-  pathlen=pion_ad_pathlen();
 
   /* Probe for the atomic data before anything is allocated. The open below
    * is checked, but it returns with ~15 allocations already live, and this
@@ -122,8 +117,6 @@ int neutral
 
   /* FILE NAMES */
 
-  temp=malloc(pathlen);
-  line=malloc(400);
 
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
@@ -260,29 +253,20 @@ int neutral
     pion_fac_shell_opacity(PION_FAC_M,Nion,sigmav_rad,0,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
   }
   
-  /* Read in edge opacity */
-  snprintf(temp,pathlen,"%s/photoion_dat/neutral.tau",DATADIR);
-  input=fopen(temp,"r");
-  j=1;
-
-  E_bin=pion_dvector(1,SPECBINS);
-  /* Open issue 11: the 3 header lines below are parsed as data, sscanf converts
-   * nothing, and tau_edge[1..3] take whatever djunk last held. That used to be
-   * the last value read from oscillator_he.dat, by an inline loop now in
-   * photoion_atomdata.c. Keep it, so this refactor stays bit-for-bit; drop it
-   * when issue 11 is fixed. */
+  /* Read in edge opacity: neutral.tau, parsed once (photoion_atomdata), one
+   * entry per line. Open issue 11 still stands: the 3 header lines are taken
+   * as data, sscanf converts nothing for them, and tau_edge[1..3] get
+   * whatever djunk last held -- the last value of oscillator_he.dat, as when
+   * the inline loop read that file -- so every row lands 3 bins late. The
+   * loop used to run on past SPECBINS and write the file's last 3 rows beyond
+   * tau_edge and E_bin; it stops at SPECBINS now. Those 3 values were never
+   * read, and E_bin (written, never read) is gone. */
   djunk=pion_ad_oscillator_he_lastraw();
-  /*  for (k=1;k<=3;++k) fgets(line,LENGTH,input);    */
-  while (fgets(line,SPECBINS,input) != NULL) {
-    sscanf(line,"%lf%lf%lf",&energy /* keV */,&bin /* keV */,&djunk /* opacity */);
-    
-    bin=2.*bin;
-    /*    E_array[j]=1000.*energy;*/
-    E_bin[j]=1000.*bin;
+  ntau=pion_ad_neutral_tau(&nntau);
+  for (r=0,j=1;r<nntau && j<=SPECBINS;++r,++j) {
+    if (ntau[r].n>=3) djunk=ntau[r].v[2];
     tau_edge[j]=Nion[1][1]*djunk;
-    ++j;
   }
-  fclose(input);
 
   if (0 && sigmav_rad) {
     if (verbose) printf("Convolving spectrum with appropriate velocity distribution...");
@@ -351,8 +335,6 @@ int neutral
 
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
-  free(temp);
-  free(line);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
   pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
@@ -363,7 +345,6 @@ int neutral
   pion_free_dvector(tau_exc,1,SPECBINS);           
   pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(ionizsigmatemp,1,SPECBINS);
-  pion_free_dvector(E_bin,1,SPECBINS);       
   pion_free_dmatrix(Nion,1,28,1,28);
   pion_free_dmatrix(H_excite,1,28,1,6);
   pion_free_dmatrix(He_excite,1,28,1,9);
