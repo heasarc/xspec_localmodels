@@ -20,10 +20,15 @@ produces errors of the form "NEUTRAL: Failed to open
 .../photoion_dat/photoion_dat/abundance.dat".
 <p>
 
-Note that the internal buffer holding these constructed filenames is
-fixed at 130 characters, so a long PHOTOION_DIR path (on the order of
-100 characters or more) will overflow it and abort XSPEC. Keep the path
-short until this is fixed.
+PHOTOION_DIR may be any length. (Versions before 2026 kept the
+constructed filenames in a fixed 130-character buffer, and a path of
+about 100 characters or more aborted XSPEC.)
+<p>
+The abundance, He oscillator-strength, temperature and Verner
+photoionization tables are read once per XSPEC session and kept, not
+re-read on every evaluation. If one of them cannot be opened, the model
+prints "PHOTOION: cannot open <i>path</i>" once and returns zeros. Restart
+XSPEC, or change PHOTOION_DIR, to retry.
 <p>
 
 

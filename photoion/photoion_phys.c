@@ -622,3 +622,67 @@ void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,do
     tau_exc_p[k]+=Nion_column_density*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
   }
 }
+
+/* Verner photoionization edges: the full cross sections for H- and He-like
+ * ions (He I from Yan et al. instead), and the partial L- and M-shell cross
+ * sections. This was the same block in seven models. zmax is the last element
+ * in the H-/He-like loop, 28 in most models and 26 in siabs and xiabs; the two
+ * agree because verner_photo.dat stops at Z=26. The partial-edge loops run to
+ * the number of records each element actually has (open issue 12: they used to
+ * scan all 126 slots of an uninitialized array, one past its end). Sets the
+ * global THRESHOLD exactly as the inline copies did.
+ *
+ * Nion is a parameter, not the global: the five absorption models declare a
+ * local Nion (and N_e, sigmav_rad, v_rad) that shadows the one in
+ * photoion_state.h, so the global is NULL there. Shared code must never read
+ * those four globals. */
+void pion_verner_edges(double **Nion,
+                       const struct VERNER_STRUCT (*vernerionizsigma)[31],
+                       const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],
+                       const int npartial[], int zmax, double tau_p[])
+{
+  int element, electron, j;
+
+  /* Photoionization opacity for H- and He-like */
+  for (element=1;element<=zmax;++element) {
+    for (electron=1;electron<=2;++electron) {
+      if (Nion[element][electron]) {
+	if (element==2 && electron==2) {
+	  THRESHOLD=24.58;
+	  pion_HeI_edge_opacity(Nion[element][electron],THRESHOLD,tau_p);
+	} else {
+	  THRESHOLD=vernerionizsigma[element][electron].Eth;
+	  pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_p);
+	}
+      }
+    }
+  }
+
+  /* From Verner table: L-shell edges for C,N,O */
+  for (element=6;element<=8;++element) {
+    for (electron=3;electron<=8;++electron) {
+      if (Nion[element][electron]) {
+	for (j=0;j<npartial[element];++j) {
+	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=2) {
+	    THRESHOLD=partialsigma[element][j].Eth;
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_p);
+	  }
+	}
+      }
+    }
+  }
+
+  /* From Verner table: Get L-shell edges for C,N,O and M-shell edges for M-shell ions */
+  for (element=1;element<=28;++element) {
+    for (electron=11;electron<=28;++electron) {
+      if (Nion[element][electron] && !(electron <=20 && (element == 26 || element == 28))) {
+	for (j=0;j<npartial[element];++j) {
+	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=3) {
+	    THRESHOLD=partialsigma[element][j].Eth;
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_p);
+	  }
+	}
+      }
+    }
+  }
+}

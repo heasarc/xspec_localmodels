@@ -1,11 +1,11 @@
 #include "cfortran.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <math.h>
 
 #include "photoion_phys.h"
+#include "photoion_atomdata.h"
 #include "photoion_const.h"
 
 #include "photoion_integrate.h"
@@ -46,10 +46,11 @@ int xiabs
     photar[i] = [photons/cm^2/s] for bin ear[i] -> ear[i+1]
     param[0] -> param[TOTAL-1]   gives XSPEC parameters from 1 to TOTAL*/
 
-  struct VERNER_STRUCT vernerionizsigma[31][31];
+  const struct VERNER_STRUCT (*vernerionizsigma)[31];  /* cached, see photoion_atomdata.h */
 
-  int PARTIAL_NUM=125;
-  struct VERNER_PARTIAL_STRUCT partialsigma[29][125];
+  const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125];
+  const int *npartial;
+  int pathlen;     /* buffer size for any data path under DATADIR (open issue 2) */
 
   struct HYDROGEN_STRUCT {
     double lambda[8];
@@ -106,10 +107,9 @@ int xiabs
 
   double E0=0.,DELTANUD,ALPHA,OSCILLATOR;
 
-  int element,electron,element_prev=0,principal,angular;
+  int element,electron;
   int LINE;
   double WAVE,AMtemp,fMtemp;
-  double Emax,Ezero,Eth,s0,ya,P,yw,y0,y1;
   double Etemp;
 
   int *list;
@@ -125,14 +125,16 @@ int xiabs
 
   int DIST,lines=0;
 
-  FILE *vernerphoto,*vernerpartial,*linedat,*highnfile;
-  char *vernerphoto_name,*vernerpartial_name,*linedat_name,*highnfile_name;
+  FILE *linedat,*highnfile;
+  char *linedat_name,*highnfile_name;
   FILE *input;
 
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
   DATADIR=FGMSTR(name);
+  pion_ad_begin(DATADIR);
+  pathlen=pion_ad_pathlen();
 
   /* Probe for the atomic data before anything is allocated. The open below
    * is checked, but it returns with ~15 allocations already live, and this
@@ -163,14 +165,12 @@ int xiabs
   }
 
   /* FILE NAMES */
-  vernerphoto_name=malloc(200);
-  vernerpartial_name=malloc(200);
-  linedat_name=malloc(200);
-  highnfile_name=malloc(200);
+  linedat_name=malloc(pathlen);
+  highnfile_name=malloc(pathlen);
 
-  root=malloc(200);
+  root=malloc(pathlen);
   element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
-  temp=malloc(130);
+  temp=malloc(pathlen);
   sjunk=malloc(50);
   sjunk1=malloc(50);
   sjunk2=malloc(50);
@@ -183,25 +183,10 @@ int xiabs
 
 
   ABUND=pion_dvector(1,30);
-  for (i=1;i<=30;++i) ABUND[i]=0.;
-  sprintf(temp,"%s/photoion_dat/abundance.dat",DATADIR);
-  input=fopen(temp,"r");
-  if ( input == NULL ) {
-    printf("XIABS: Failed to open %s\n", temp);
-    return 1;
-  }
-  while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
-    ABUND[element]=djunk;
-  }
-  fclose(input);
+  pion_ad_abundance(ABUND);
 
   oshe=pion_dvector(1,30);
-  sprintf(temp,"%s/photoion_dat/oscillator_he.dat",DATADIR);
-  input=fopen(temp,"r");
-  while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
-    oshe[element]=cube(10.)*djunk;
-  }
-  fclose(input);
+  pion_ad_oscillator_he(oshe);
 
   N_H=param[0];
   djunk=param[1];  ABUND[2]*=djunk;
@@ -226,7 +211,7 @@ int xiabs
   SPECBINS=(int) param[19];
   verbose=(int) param[20];
 
-  sprintf(temp,"xi.dat");
+  snprintf(temp,pathlen,"xi.dat");
   input=fopen(temp,"r");
   if (input==NULL) {
     printf("The file 'xi.dat' must exist in this directory.\n");
@@ -243,7 +228,7 @@ int xiabs
   for (i=1;i<=FRACXINUM;++i) fscanf(input,"%lf%lf",&(xi_frac_grid[i]),&(frac_grid[i]));
   fclose(input);
 
-  sprintf(temp,"%s/photoion_dat/xi_ions.dat",DATADIR);
+  snprintf(temp,pathlen,"%s/photoion_dat/xi_ions.dat",DATADIR);
   input=fopen(temp,"r");
   fscanf(input,"%d",&FIONXINUM);
   xi_fion_grid=pion_dvector(1,FIONXINUM);  
@@ -417,46 +402,10 @@ int xiabs
     EGRID[k]=((double) k-1.)/((double) GRIDNUM)*log10(EHI/ELO)+log10(ELO);
   }
 
-  /*  Reading in Total Photoionization Cross Sections (Verner)  */
-  sprintf(vernerphoto_name,"%s/photoion_dat/verner_photo.dat",DATADIR);
-  vernerphoto=fopen(vernerphoto_name,"r");
-  while (fscanf(vernerphoto,"%d%d%lf%lf%lf%lf%lf%lf%lf%lf%lf",&element,&electron,&Eth,&Emax,&Ezero,&s0,&ya,&P,&yw,&y0,&y1)!=EOF) {
-    vernerionizsigma[element][electron].Eth=Eth;
-    vernerionizsigma[element][electron].Emax=Emax;
-    vernerionizsigma[element][electron].Ezero=Ezero;
-    vernerionizsigma[element][electron].s0=s0;
-    vernerionizsigma[element][electron].ya=ya;
-    vernerionizsigma[element][electron].P=P;
-    vernerionizsigma[element][electron].yw=yw;
-    vernerionizsigma[element][electron].y0=y0;
-    vernerionizsigma[element][electron].y1=y1;
-  }
-  fclose(vernerphoto);
-  free(vernerphoto_name);
-
-  /*  Reading in Partial Photoionization Cross Sections (Verner)  */
-  sprintf(vernerpartial_name,"%s/photoion_dat/verner_partial_PIsigmas.dat",DATADIR);
-  vernerpartial=fopen(vernerpartial_name,"r");
-  /* Only the first npartial records of each element are filled; zero the rest
-   * so the edge loops below cannot match stale stack contents (open issue 12). */
-  memset(partialsigma,0,sizeof partialsigma);
-  k=0;
-  while (fscanf(vernerpartial,"%d%d%d%d%lf%lf%lf%lf%lf%lf",&element,&electron,&principal,&angular,&Eth,&Ezero,&s0,&ya,&P,&yw)!=EOF) {
-    if (element!=element_prev) k=0;
-    partialsigma[element][k].electron=electron;
-    partialsigma[element][k].principal=principal;
-    partialsigma[element][k].angular=angular;
-    partialsigma[element][k].Eth=Eth;
-    partialsigma[element][k].Ezero=Ezero;
-    partialsigma[element][k].s0=s0;
-    partialsigma[element][k].ya=ya;
-    partialsigma[element][k].P=P;
-    partialsigma[element][k].yw=yw;
-    element_prev=element;
-    k=k+1;
-  }
-  fclose(vernerpartial);
-  free(vernerpartial_name);
+  /* Verner total and partial photoionization fits, parsed once per process */
+  vernerionizsigma=pion_ad_verner_full();
+  partialsigma=pion_ad_verner_partial();
+  npartial=pion_ad_verner_partial_count();
 
   /* Total electron Thomson depth */
   for (k=1;k<=SPECBINS;++k) {
@@ -465,48 +414,7 @@ int xiabs
 
   /* H- and He-like cross sections for C, N, and O */
   if (verbose) printf("H- and He-like edge cross sections for H,He,C to Ni...\n");
-  /* Photoionization opacity for H- and He-like from H to Fe */
-  for (element=1;element<=26;++element) {
-    for (electron=1;electron<=2;++electron) {
-      if (Nion[element][electron]) {
-	if (element==2 && electron==2) {
-	  THRESHOLD=24.58;
-	  pion_HeI_edge_opacity(Nion[element][electron],THRESHOLD,tau_edge);
-	} else {
-	  THRESHOLD=vernerionizsigma[element][electron].Eth;
-	  pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_edge);
-	}
-      }
-    }
-  }
-
-  /* From Verner table: L-shell edges for C,N,O */
-  for (element=6;element<=8;++element) {
-    for (electron=3;electron<=8;++electron) {
-      if (Nion[element][electron]) {
-	for (j=0;j<PARTIAL_NUM;++j) {
-	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=2) {
-	    THRESHOLD=partialsigma[element][j].Eth;
-	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
-  	  }
-	}
-      }
-    }
-  }
-
-  /* From Verner table: Get L-shell edges for C,N,O and M-shell edges for M-shell ions */
-  for (element=1;element<=28;++element) {
-    for (electron=11;electron<=28;++electron) {
-      if (Nion[element][electron] && !(electron <=20 && (element == 26 || element == 28))) {
-	for (j=0;j<PARTIAL_NUM;++j) {
-	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=3) {
-	    THRESHOLD=partialsigma[element][j].Eth;
-	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_edge);
-  	  }
-	}
-      }
-    }
-  }
+  pion_verner_edges(Nion,vernerionizsigma,partialsigma,npartial,26,tau_edge);
 
   if (lines) {
     if (verbose) printf("Determining LOW-n Photoexcitation Cross Sections & Opacity for C to Fe...\n");
@@ -516,7 +424,7 @@ int xiabs
     grounddeg[2]=1.;
     freedeg[2]=2.;
     for (i=3;i<=8;++i) leveldeg[2][i]=3.;
-    sprintf(linedat_name,"%s/photoion_dat/line.dat",DATADIR);
+    snprintf(linedat_name,pathlen,"%s/photoion_dat/line.dat",DATADIR);
     linedat=fopen(linedat_name,"r");
     while(fscanf(linedat,"%s%d%d%d%s%lf%s%lf%lf",sjunk,&element,&electron,&LINE,sjunk,&WAVE,sjunk,&AMtemp,&fMtemp) != EOF) {
       if (electron == 1) {
@@ -557,7 +465,7 @@ int xiabs
     
     
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
-    sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
+    snprintf(highnfile_name,pathlen,"%s/photoion_dat/highn.dat",DATADIR);
     highnfile=fopen(highnfile_name,"r");
     while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
       highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
@@ -606,12 +514,12 @@ int xiabs
 	if (element == 20) sprintf(element_name,"Ca");
 	if (element == 26) sprintf(element_name,"Fe");
 	if (element == 28) sprintf(element_name,"Ni");
-	sprintf(root,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
+	snprintf(root,pathlen,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	else sprintf(temp,"%s%da.%s",root,electron,ext);
+	if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
+	else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
@@ -643,8 +551,8 @@ int xiabs
 	if (lines) {
 	  if (electron>=3) {
 	    ext="tr_short"; 
-	    if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	    else sprintf(temp,"%s%da.%s",root,electron,ext);
+	    if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
+	    else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
 	    input=fopen(temp,"r");
 	    while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	      j=j+1;
@@ -678,12 +586,12 @@ int xiabs
 	if (element == 6) sprintf(element_name,"C");
 	if (element == 7) sprintf(element_name,"N");
 	if (element == 8) sprintf(element_name,"O");
-	sprintf(root,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
+	snprintf(root,pathlen,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 	/* for photoionization cross-sections */
 	ext="pi_short"; 
-	if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	else sprintf(temp,"%s%da.%s",root,electron,ext);
+	if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
+	else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
@@ -714,8 +622,8 @@ int xiabs
 	
 	if (lines) {
 	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s",root,electron,ext);
+	  if (electron<10) snprintf(temp,pathlen,"%s0%da.%s",root,electron,ext);
+	  else snprintf(temp,pathlen,"%s%da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    j=j+1;
@@ -753,13 +661,13 @@ int xiabs
 	if (element == 20) sprintf(element_name,"Ca");
 	if (element == 26) sprintf(element_name,"Fe");
 	if (element == 28) sprintf(element_name,"Ni");
-	sprintf(root,"%s/photoion_dat/M_shell/%s",DATADIR,element_name);
+	snprintf(root,pathlen,"%s/photoion_dat/M_shell/%s",DATADIR,element_name);
 	if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
 
 	if (lines) {
 	  /* Transitions */
 	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s",root,electron,ext);
+	  snprintf(temp,pathlen,"%s%2da.%s",root,electron,ext);
 	  input=fopen(temp,"r");
 	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
 	    g_j=g_j+1.;
@@ -780,7 +688,7 @@ int xiabs
 
 	/* Edges */
 	ext="pi_short"; 
-	sprintf(temp,"%s%2da.%s",root,electron,ext);
+	snprintf(temp,pathlen,"%s%2da.%s",root,electron,ext);
 	input=fopen(temp,"r");
 	while (fscanf(input,"%d%lf%d%lf%lf%lf",&i,&g_i,&j,&g_j,&THRESHOLD,&ANGULAR) != EOF) {
 	  i=i+1; j=j+1; /* lowest level is '1' not '0'!!! */
@@ -915,6 +823,12 @@ int xiabs
   pion_free_dvector(PIGRID_2,1,GRIDNUM);
   if (verbose) printf("...done!\n");
   
+  /* A data file could not be opened: everything above ran on zeros. Report it
+   * the same way as the other input errors, after the normal cleanup. */
+  if (pion_ad_failed()) {
+    for (i=0;i<ne;++i) photar[i]=0.;
+    return 1;
+  }
   return 0;
 }
 

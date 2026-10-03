@@ -66,6 +66,10 @@ void pion_HeI_edge_opacity(double Nion_column_density, double THRESHOLD, double 
 void pion_fac_edge_opacity(double Nion_column_density, double THRESHOLD, double tau_p[]);
 void pion_verner_full_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]);
 void pion_verner_partial_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_PARTIAL_STRUCT verner, double tau_p[]);
+void pion_verner_edges(double **Nion,
+                       const struct VERNER_STRUCT (*vernerionizsigma)[31],
+                       const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],
+                       const int npartial[], int zmax, double tau_p[]);
 
 void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both);
 void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[],double pad_lo,double pad_hi,int clamp_both);
