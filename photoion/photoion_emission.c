@@ -246,7 +246,7 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
 	    pion_fac_load_record(&pirec[r],&g_i,&g_j);
 	    p0=pirec[r].p[0]; p1=pirec[r].p[1]; p2=pirec[r].p[2]; p3=pirec[r].p[3];
 	    if ((THRESHOLD>=EMIN/doppler_rad && THRESHOLD<=EMAX/doppler_rad) && pion_pisigma(g_i,p0,p1,p2,p3,THRESHOLD) >= 0. /* This one should be left at zero????*/) {
-	      pion_fac_build_table(g_i,pirec[r].p);
+	      pion_fac_build_table(&pirec[r],g_i);
 
 	      /* calculate PI rate and modify ratePI[element][electron] */
 	      djunk=Nion[element][electron]*pion_fac_PI_rate_integral(THRESHOLD,Labsorb);

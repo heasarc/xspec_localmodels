@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "photoion_atomdata.h"
+#include "photoion_xstab.h"
 #include "photoion_alloc.h"   /* pion_error */
 #include "photoion_const.h"   /* HC_KEV_ANGSTROM */
 
@@ -57,6 +58,7 @@ static void free_rowfiles(struct rowfile *rf, size_t count)
 
 static void reset(void)
 {
+  pion_xstab_flush();   /* the cached tables belong to records freed below */
   st_abund = st_oshe = st_temp = st_vfull = st_vpart = st_lines = st_highn = UNREAD;
   free(line_rows);
   line_rows = NULL;
@@ -104,6 +106,7 @@ void pion_ad_begin(const char *dir)
     reset();
   }
   failed = 0;
+  pion_xstab_begin();   /* read PHOTOION_CACHE_MB */
 }
 
 int pion_ad_failed(void)
@@ -430,6 +433,7 @@ const struct PION_FAC_PIREC *pion_ad_fac_pi(int shell, int Z, int nelec, int *n)
           fscanf(input,"%lf%lf%lf%lf",&r.grid[k][0],&r.grid[k][1],&r.grid[k][2],&r.grid[k][3]);
         rows = grow(rows, count, &cap, sizeof *rows);
         if (rows == NULL) break;
+        r.cache = NULL;
         rows[count++] = r;
       }
       fclose(input);
@@ -628,6 +632,7 @@ const struct PION_FAC_PIREC *pion_ad_rr_short(int Z, int nelec, int *n)
         fscanf(input,"%lf%lf%lf%lf",&r.grid[k][0],&r.grid[k][1],&r.grid[k][2],&r.grid[k][3]);
       rows = grow(rows, count, &cap, sizeof *rows);
       if (rows == NULL) break;
+      r.cache = NULL;
       rows[count++] = r;
     }
     fclose(input);

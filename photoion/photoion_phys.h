@@ -59,6 +59,7 @@ struct PION_FAC_PIREC {
   double g_i, g_j, THRESHOLD, ANGULAR;
   double p[4];
   double grid[PION_LOWE_N][4];
+  void *cache;   /* this record's cached 20000-point table (photoion_xstab.c), or NULL */
 };
 /* FAC transition row from a ....tr_short file, raw: upper level j and its
  * 2J g_j, lower level i and its 2J g_i, energy [eV], oscillator strength, A. */
@@ -147,7 +148,7 @@ void pion_highn_line_opacity(double **Nion, double sigmav_rad,
                              double tau_p[], double pad_lo, double pad_hi, int clamp_both);
 enum { PION_FAC_L_NE_NI, PION_FAC_L_C_O, PION_FAC_M };
 void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g_j);
-void pion_fac_build_table(double g_i, const double p[4]);
+void pion_fac_build_table(const struct PION_FAC_PIREC *r, double g_i);
 void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
                             int do_edges, int do_lines, int verbose,
                             double tau_edge_p[], double tau_exc_p[],

@@ -37,6 +37,7 @@
 #include "photoion_atomdata.h"
 #include "photoion_integrate.h"
 #include "photoion_cspline.h"
+#include "photoion_xstab.h"
 
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
@@ -352,7 +353,9 @@ double pion_loglinestrength(double logkT, int ntemps)
  * reused for other things) and the 20000-point table over a master copy of
  * EGRID. Both are compact splines (photoion_cspline.c). */
 static double lowe_x[PION_LOWE_N];
-static struct pion_cspline lowe_spline, pi_spline;
+static struct pion_cspline lowe_spline;
+static struct pion_cspline *pi_cur = NULL;     /* the current 20000-point table, usually cached */
+static struct pion_cspline pi_uncached;        /* fallback if the cache cannot take one */
 static double *egrid_master = NULL;
 static const double *egrid_seen = NULL;   /* the EGRID last compared with the master */
 
@@ -386,7 +389,7 @@ double pion_pispline(double E)
   double answer;
   
   E=log10(E);
-  answer=pion_cspline_eval(&pi_spline,E);
+  answer=pion_cspline_eval(pi_cur,E);
   return pow(10.,answer);
 }
 
@@ -802,10 +805,31 @@ void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g
  * (1e-90) below threshold, the 6-point spline up to its last node (open issue
  * 7 covers the region below its first node), the FAC fit above. Then log10
  * and a compact spline over it (photoion_cspline.c). */
-void pion_fac_build_table(double g_i, const double p[4])
+void pion_fac_build_table(const struct PION_FAC_PIREC *r, double g_i)
 {
   int k;
-  double p0=p[0], p1=p[1], p2=p[2], p3=p[3];
+  double p0=r->p[0], p1=r->p[1], p2=r->p[2], p3=r->p[3];
+  struct pion_cspline *t;
+
+  /* EGRID is rebuilt with the same values every evaluation; keep one master
+   * copy for the tables to reference, refreshed only if it changes -- and
+   * then every cached table is stale, so drop them. */
+  if (egrid_master==NULL) {
+    egrid_master=malloc((size_t) GRIDNUM*sizeof *egrid_master);
+    if (egrid_master==NULL) { pion_error("pion_fac_build_table: out of memory"); return; }
+    memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    egrid_seen=EGRID;
+  } else if (EGRID!=egrid_seen) {   /* a new evaluation's array: compare once */
+    if (memcmp(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master)!=0) {
+      pion_xstab_flush();
+      memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    }
+    egrid_seen=EGRID;
+  }
+
+  /* A table depends only on its record: reuse it if it is cached. */
+  t=pion_xstab_lookup(r);
+  if (t) { pi_cur=t; return; }
 
   /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
   for (k=1;k<=GRIDNUM;++k) {
@@ -814,20 +838,18 @@ void pion_fac_build_table(double g_i, const double p[4])
     else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
   }
   for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
-  /* EGRID is rebuilt with the same values every evaluation; keep one
-   * master copy for the spline to reference, refreshed only if it changes. */
-  if (egrid_master==NULL) {
-    egrid_master=malloc((size_t) GRIDNUM*sizeof *egrid_master);
-    if (egrid_master==NULL) { pion_error("pion_fac_build_table: out of memory"); return; }
-    memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
-    egrid_seen=EGRID;
-  } else if (EGRID!=egrid_seen) {   /* a new evaluation's array: compare once */
-    if (memcmp(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master)!=0)
-      memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
-    egrid_seen=EGRID;
+
+  t=pion_xstab_insert(r,GRIDNUM);
+  if (t!=NULL && pion_cspline_init(t,egrid_master,PIGRID+1,GRIDNUM)!=0) {
+    pion_xstab_forget(r);
+    t=NULL;
   }
-  pion_cspline_free(&pi_spline);
-  pion_cspline_init(&pi_spline,egrid_master,PIGRID+1,GRIDNUM);
+  if (t==NULL) {   /* no room or no memory: build it uncached */
+    pion_cspline_free(&pi_uncached);
+    pion_cspline_init(&pi_uncached,egrid_master,PIGRID+1,GRIDNUM);
+    t=&pi_uncached;
+  }
+  pi_cur=t;
 }
 
 /* Edges of one FAC pi_short file: build each record's table if the edge
@@ -841,7 +863,7 @@ static void fac_edges(double Nion_ion, int shell, int Z, int nelec, double gate_
   for (r=0;r<n;++r) {
     pion_fac_load_record(&rec[r], &g_i, &g_j);
     if (Nion_ion*pion_pisigma(g_i,rec[r].p[0],rec[r].p[1],rec[r].p[2],rec[r].p[3],gate_factor*THRESHOLD) >= tau_lim) {
-      pion_fac_build_table(g_i, rec[r].p);
+      pion_fac_build_table(&rec[r], g_i);
       /* calculate opacity of given edge and modify "tau" accordingly */
       pion_fac_edge_opacity(Nion_ion,THRESHOLD,tau_edge_p);
     }
