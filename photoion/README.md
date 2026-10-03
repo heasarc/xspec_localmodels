@@ -32,7 +32,7 @@ The abundance, He oscillator-strength, temperature, Verner
 photoionization, line (line.dat), high-n line (highn.dat), FAC
 L- and M-shell (pi_short, tr_short), and emission-model recombination
 (trates, tr_shorter, .dat, rr_short, H_ and He_recombination.dat),
-xi_ions.dat and neutral.tau tables -- every file in photoion_dat --
+xi_ions.dat and neutral.tau tables -- every data file the models use --
 are read once per XSPEC session, as each is first needed, and kept, not
 re-read on every evaluation.
 <p>
