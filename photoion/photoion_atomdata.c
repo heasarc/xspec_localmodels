@@ -10,6 +10,8 @@
 #include <string.h>
 
 #include "photoion_atomdata.h"
+#include "photoion_alloc.h"   /* pion_error */
+#include "photoion_const.h"   /* HC_KEV_ANGSTROM */
 
 #define cube(X) ((X)*(X)*(X))
 
@@ -22,7 +24,7 @@ enum { UNREAD = 0, LOADED, MISSING };
 static char *datadir = NULL;     /* the directory the cache belongs to */
 static int failed = 0;           /* a file was missing since pion_ad_begin */
 
-static int st_abund, st_oshe, st_temp, st_vfull, st_vpart;
+static int st_abund, st_oshe, st_temp, st_vfull, st_vpart, st_lines, st_highn;
 
 static double abund[31];
 static double oshe_raw[31];
@@ -33,10 +35,21 @@ static int    temp_set[31][31];
 static struct VERNER_STRUCT vfull[31][31];
 static struct VERNER_PARTIAL_STRUCT vpart[29][125];
 static int    npart[29];
+static struct PION_LINE_ROW *line_rows = NULL;
+static int    nline_rows = 0;
+static struct HYDROGEN_STRUCT hyd[29];
+static struct HELIUM_STRUCT   hel[29];
+static struct HIGHER_ORDER_STRUCT hn[29][3];   /* [29]: the emission PE-rate block indexes Ni (28) */
 
 static void reset(void)
 {
-  st_abund = st_oshe = st_temp = st_vfull = st_vpart = UNREAD;
+  st_abund = st_oshe = st_temp = st_vfull = st_vpart = st_lines = st_highn = UNREAD;
+  free(line_rows);
+  line_rows = NULL;
+  nline_rows = 0;
+  memset(hyd, 0, sizeof hyd);
+  memset(hel, 0, sizeof hel);
+  memset(hn, 0, sizeof hn);
   memset(abund, 0, sizeof abund);
   memset(oshe_raw, 0, sizeof oshe_raw);
   memset(oshe_set, 0, sizeof oshe_set);
@@ -241,3 +254,86 @@ const int *pion_ad_verner_partial_count(void)
   load_vpart();
   return npart;
 }
+
+/* line.dat: "%s%d%d%d%s%lf%s%lf%lf" per row, as the models read it. */
+static void load_lines(void)
+{
+  char s[256];
+  int element, electron, LINE, cap = 0;
+  double WAVE, AMtemp, fMtemp;
+  FILE *linedat;
+
+  if (st_lines != UNREAD) { usable(&st_lines); return; }
+  linedat = open_data("line.dat", &st_lines);
+  if (linedat == NULL) return;
+  while (fscanf(linedat,"%255s%d%d%d%255s%lf%255s%lf%lf",s,&element,&electron,&LINE,s,&WAVE,s,&AMtemp,&fMtemp) != EOF) {
+    if (nline_rows == cap) {
+      struct PION_LINE_ROW *grown;
+      cap = cap ? 2*cap : 256;
+      grown = realloc(line_rows, cap * sizeof *line_rows);
+      if (grown == NULL) { pion_error("photoion_atomdata: out of memory reading line.dat"); break; }
+      line_rows = grown;
+    }
+    line_rows[nline_rows].element = element;
+    line_rows[nline_rows].electron = electron;
+    line_rows[nline_rows].LINE = LINE;
+    line_rows[nline_rows].WAVE = WAVE;
+    line_rows[nline_rows].A = AMtemp;
+    line_rows[nline_rows].f = fMtemp;
+    ++nline_rows;
+    if (element < 0 || element > 28) continue;
+    if (electron == 1 && LINE >= 0 && LINE < 8) {
+      hyd[element].lambda[LINE]=WAVE;
+      hyd[element].A[LINE]=AMtemp;
+      hyd[element].f[LINE]=fMtemp;
+    } else if (electron == 2 && LINE >= 0 && LINE < 11) {
+      hel[element].lambda[LINE]=WAVE;
+      hel[element].A[LINE]=AMtemp;
+      hel[element].f[LINE]=fMtemp;
+    }
+  }
+  fclose(linedat);
+  st_lines = LOADED;
+}
+
+const struct PION_LINE_ROW *pion_ad_line_rows(int *nrows)
+{
+  load_lines();
+  *nrows = nline_rows;
+  return line_rows;
+}
+
+const struct HYDROGEN_STRUCT *pion_ad_hydrogen(void)
+{
+  load_lines();
+  return hyd;
+}
+
+const struct HELIUM_STRUCT *pion_ad_helium(void)
+{
+  load_lines();
+  return hel;
+}
+
+const struct HIGHER_ORDER_STRUCT (*pion_ad_highn(void))[3]
+{
+  int element, electron, n;
+  double Etemp, ftemp;
+  FILE *highnfile;
+
+  if (st_highn == UNREAD) {
+    highnfile = open_data("highn.dat", &st_highn);
+    if (highnfile) {
+      while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
+        if (element < 0 || element > 28 || electron < 0 || electron > 2 || n < 0 || n > 100) continue;
+        hn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
+        hn[element][electron].f[n]=ftemp;
+      }
+      fclose(highnfile);
+      st_highn = LOADED;
+    }
+  }
+  usable(&st_highn);
+  return (const struct HIGHER_ORDER_STRUCT (*)[3]) hn;
+}
+

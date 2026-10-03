@@ -49,4 +49,14 @@ const struct VERNER_STRUCT (*pion_ad_verner_full(void))[31];
 const struct VERNER_PARTIAL_STRUCT (*pion_ad_verner_partial(void))[125];
 const int *pion_ad_verner_partial_count(void);
 
+/* line.dat. The rows in file order (for the low-n opacity), and the H- and
+ * He-like tables they fill, indexed [0..28] by Z (for recombination lines). */
+const struct PION_LINE_ROW *pion_ad_line_rows(int *nrows);
+const struct HYDROGEN_STRUCT *pion_ad_hydrogen(void);
+const struct HELIUM_STRUCT *pion_ad_helium(void);
+
+/* highn.dat, indexed [Z][electrons], Z = 0..28. The file stops at Z = 26, so
+ * Ni (28) reads zeros (see open issue 14). */
+const struct HIGHER_ORDER_STRUCT (*pion_ad_highn(void))[3];
+
 #endif

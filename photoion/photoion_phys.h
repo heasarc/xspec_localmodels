@@ -29,6 +29,31 @@ struct VERNER_PARTIAL_STRUCT {
   double yw;
 };
 
+/* line.dat: H-like (LINE 1..6) and He-like (LINE 1..9) lines, indexed by Z.
+ * Moved here from inside each model function, where all eight were identical. */
+struct HYDROGEN_STRUCT {
+  double lambda[8];
+  double f[8];
+  double A[8];
+  double b[8]; /* branching ratios? (never set) */
+};
+struct HELIUM_STRUCT {
+  double lambda[11];
+  double f[11];
+  double A[11];
+  double b[11]; /* branching ratios? (never set) */
+};
+/* One line.dat row, in file order. */
+struct PION_LINE_ROW {
+  int element, electron, LINE;
+  double WAVE, A, f;
+};
+/* highn.dat: lambda and f for principal quantum number n, indexed [Z][electrons]. */
+struct HIGHER_ORDER_STRUCT {
+  double lambda[101];
+  double f[101];
+};
+
 double pion_DR_line_spline(double temp);
 double pion_EtimesL(double E );
 double pion_HeI_edge(double E);
@@ -66,6 +91,13 @@ void pion_HeI_edge_opacity(double Nion_column_density, double THRESHOLD, double 
 void pion_fac_edge_opacity(double Nion_column_density, double THRESHOLD, double tau_p[]);
 void pion_verner_full_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]);
 void pion_verner_partial_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_PARTIAL_STRUCT verner, double tau_p[]);
+void pion_lown_line_opacity(double **Nion, double sigmav_rad,
+                            const struct PION_LINE_ROW *rows, int nrows,
+                            double tau_p[], double pad_lo, double pad_hi, int clamp_both);
+void pion_highn_line_opacity(double **Nion, double sigmav_rad,
+                             const struct HIGHER_ORDER_STRUCT (*highn)[3],
+                             const int list[], int nlist, int HIGHN, const double oshe[],
+                             double tau_p[], double pad_lo, double pad_hi, int clamp_both);
 void pion_verner_edges(double **Nion,
                        const struct VERNER_STRUCT (*vernerionizsigma)[31],
                        const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],

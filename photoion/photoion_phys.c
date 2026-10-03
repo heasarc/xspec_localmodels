@@ -686,3 +686,76 @@ void pion_verner_edges(double **Nion,
     }
   }
 }
+
+/* Low-n (n <= 5) photoexcitation opacity of H- and He-like ions, from the
+ * line.dat rows in file order: LINE <= 4 for H-like and LINE <= 6 for He-like,
+ * where the ion has a column and the line an oscillator strength. This was the
+ * same loop in all eight models, fused with the file read. Only pad_lo,
+ * pad_hi and clamp_both differed (emission 0.9, 1.1, 1; absorption 1.0, 1.0, 0;
+ * see pion_line_limits). The callers test `lines`. Nion and sigmav_rad are
+ * parameters because the absorption models shadow both globals. */
+void pion_lown_line_opacity(double **Nion, double sigmav_rad,
+                            const struct PION_LINE_ROW *rows, int nrows,
+                            double tau_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int r, element, electron, LINE;
+  double E0, OSCILLATOR, Atemp, ga, DELTANUD, ALPHA;
+
+  for (r=0;r<nrows;++r) {
+    element=rows[r].element;
+    electron=rows[r].electron;
+    LINE=rows[r].LINE;
+    if (electron == 1) {
+      if (!(Nion[element][electron] && rows[r].f && LINE <= 4)) continue;
+    } else if (electron == 2) {
+      if (!(Nion[element][electron] && rows[r].f && LINE <= 6)) continue;
+    } else continue;
+    E0=1000.*HC_KEV_ANGSTROM/rows[r].WAVE;
+    E0=E0*doppler_rad;
+    OSCILLATOR=rows[r].f;
+    Atemp=rows[r].A;
+    ga=Atemp;
+    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+    ALPHA=ga/(4.*PI*DELTANUD);
+    pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_p,pad_lo,pad_hi,clamp_both);
+  }
+}
+
+/* High-n (6 <= n <= HIGHN) photoexcitation opacity of H- and He-like ions, for
+ * the elements in list[1..nlist]. Oscillator strengths scale as n^-3 (1.6 for
+ * H-like, Bethe & Salpeter p. 265; oshe for He-like); Ni uses Fe's
+ * wavelengths, scaled. Same in all eight models apart from the pad arguments. */
+void pion_highn_line_opacity(double **Nion, double sigmav_rad,
+                             const struct HIGHER_ORDER_STRUCT (*highn)[3],
+                             const int list[], int nlist, int HIGHN, const double oshe[],
+                             double tau_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int i, n, element, electron;
+  double E0=0., OSCILLATOR, oscillatornorm=0., ga, DELTANUD, ALPHA;
+
+  for (i=1;i<=nlist;++i) {
+    element=list[i];
+    for (electron=1;electron<=2;++electron) {
+      if (Nion[element][electron]) {
+	if (electron==1) oscillatornorm=1.6; /* Bethe-Salpeter p. 265 */
+	if (electron==2) oscillatornorm=oshe[element];
+	for (n=6;n<=HIGHN;++n) {
+	  OSCILLATOR=oscillatornorm/cube((double) n);
+	  if (element!=28) {
+	    E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
+	  } else if (electron==1) {/* Use Fe numbers for Ni */
+	    E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
+	  } else if (electron==2) {/* Use Fe numbers for Ni */
+	    E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
+	  }
+	  E0=E0*doppler_rad;
+	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+	  /* taking classical value for "ga=gamma" from p. 112-114 B+D */
+	  ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
+	  ALPHA=ga/(4.*PI*DELTANUD);
+	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  }
+}

@@ -52,23 +52,14 @@ int phxi
 
   const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125];
   const int *npartial;
+  const struct PION_LINE_ROW *line_rows;   /* line.dat, cached */
+  int nline_rows;
+  const struct HYDROGEN_STRUCT *hydrogen;
+  const struct HELIUM_STRUCT *helium;
+  const struct HIGHER_ORDER_STRUCT (*highn)[3];
   int pathlen;     /* buffer size for any data path under DATADIR (open issue 2) */
 
-  struct HYDROGEN_STRUCT {
-    double lambda[8];
-    double f[8];
-    double A[8];
-    double b[8]; /* branching ratios? */
-  };
-  struct HYDROGEN_STRUCT hydrogen[29];
   
-  struct HELIUM_STRUCT {
-    double lambda[11];
-    double f[11];
-    double A[11];
-    double b[11]; /* branching ratios? */
-  };
-  struct HELIUM_STRUCT helium[29];
   
   struct H_REC_STRUCT {
     double T[TEMPERATURES+1];
@@ -86,11 +77,6 @@ int phxi
   };
   struct HE_REC_STRUCT He_rec[29];
   
-  struct HIGHER_ORDER_STRUCT {
-    double lambda[101];
-    double f[101];
-  };
-  struct HIGHER_ORDER_STRUCT highn[29][3];
 
   double *type1_spectrum,*type2_spectrum,*type3_spectrum,*type4_spectrum,*type5_spectrum,*type6_spectrum,*type7_spectrum,*type8_spectrum;
 
@@ -129,7 +115,6 @@ int phxi
 
   double RECNORM;
 
-  double grounddeg[3],leveldeg[3][11],freedeg[3];
 
   int verbose;
 
@@ -143,9 +128,8 @@ int phxi
 
   int element,electron;
   int LINE;
-  double WAVE,AMtemp,fMtemp;
   int type;
-  double Etemp,Ttemp,atemp,btemp,ctemp,dtemp,etemp,ftemp,intertemp,rtemp,rrctemp,Ctemp;
+  double Ttemp,atemp,btemp,ctemp,dtemp,etemp,ftemp,intertemp,rtemp,rrctemp,Ctemp;
   double R,strength;
 
   double RRtemp,DRtemp;
@@ -173,9 +157,9 @@ int phxi
 
   int DIST,lines=0;
 
-  FILE *linedat,*highnfile,*H_recfile,*He_recfile,*E_specfile=NULL,*l_specfile=NULL;
+  FILE *H_recfile,*He_recfile,*E_specfile=NULL,*l_specfile=NULL;
   FILE *input,*input2,*E_output=NULL,*l_output=NULL;
-  char *linedat_name,*highnfile_name,*H_recfile_name,*He_recfile_name,*specfile_name;
+  char *H_recfile_name,*He_recfile_name,*specfile_name;
 
   /* Initialize the model array */
   for (i=0;i<ne;++i) photar[i] = 0.;
@@ -236,8 +220,6 @@ int phxi
 
   /* FILE NAMES */
   root=malloc(pathlen);
-  linedat_name=malloc(pathlen);
-  highnfile_name=malloc(pathlen);
   H_recfile_name=malloc(pathlen);
   He_recfile_name=malloc(pathlen);
   specfile_name=malloc(200);
@@ -572,88 +554,16 @@ int phxi
   /* H- and He-like cross sections for C, N, and O */
   if (verbose) printf("H- and He-like edge cross sections for H,He,C to Ni...\n");
   pion_verner_edges(Nion,vernerionizsigma,partialsigma,npartial,28,tau_edge);
-
   if (verbose) printf("Determining LOW-n Photoexcitation Cross Sections & Opacity for C to Ni...\n");
-  grounddeg[1]=2.;
-  freedeg[1]=1.;
-  for (i=1;i<=6;++i) leveldeg[1][i]=6.;
-  grounddeg[2]=1.;
-  freedeg[2]=2.;
-  for (i=3;i<=8;++i) leveldeg[2][i]=3.;
-  snprintf(linedat_name,pathlen,"%s/photoion_dat/line.dat",DATADIR);
-  linedat=fopen(linedat_name,"r");
-  while(fscanf(linedat,"%s%d%d%d%s%lf%s%lf%lf",sjunk,&element,&electron,&LINE,sjunk,&WAVE,sjunk,&AMtemp,&fMtemp) != EOF) {
-    if (electron == 1) {
-      hydrogen[element].lambda[LINE]=WAVE;
-      hydrogen[element].A[LINE]=AMtemp;
-      hydrogen[element].f[LINE]=fMtemp;
-      if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
-	E0=E0*doppler_rad;
-	OSCILLATOR=hydrogen[element].f[LINE];
-	g_j=leveldeg[electron][LINE];
-	g_i=grounddeg[electron];
-	Atemp=hydrogen[element].A[LINE];
-	ga=Atemp/*g_j/(3.*g_i*OSCILLATOR)*/;
-	DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	ALPHA=ga/(4.*PI*DELTANUD);
-	if (lines) pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,0.9,1.1,1);
-      }
-    } else if (electron == 2) {
-      helium[element].lambda[LINE]=WAVE;
-      helium[element].A[LINE]=AMtemp;
-      helium[element].f[LINE]=fMtemp;
-      if (Nion[element][electron] && fMtemp && LINE <= 6) {
-	E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
-	E0=E0*doppler_rad;
-	OSCILLATOR=helium[element].f[LINE];
-	g_j=leveldeg[electron][LINE];
-	g_i=grounddeg[electron];
-	Atemp=helium[element].A[LINE];
-	ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	ALPHA=ga/(4.*PI*DELTANUD);
-	if (lines) pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,0.9,1.1,1);
-      }
-    }
-  }
-  fclose(linedat);
-  free(linedat_name);
-  
+  hydrogen=pion_ad_hydrogen();
+  helium=pion_ad_helium();
+  highn=pion_ad_highn();
+  line_rows=pion_ad_line_rows(&nline_rows);
+  if (lines) pion_lown_line_opacity(Nion,sigmav_rad,line_rows,nline_rows,tau_exc,0.9,1.1,1);
+
   if (lines) {
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
-    snprintf(highnfile_name,pathlen,"%s/photoion_dat/highn.dat",DATADIR);
-    highnfile=fopen(highnfile_name,"r");
-    while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
-      highn[element][electron].f[n]=ftemp;
-    }
-    fclose(highnfile);
-    for (i=1;i<=ELEMENTS;++i) {
-      element=list[i];
-      for (electron=1;electron<=2;++electron) {
-	if (Nion[element][electron] && lines) {
-	  if (electron==1) oscillatornorm=1.6; /* Bethe-Salpeter p. 265 */
-	  if (electron==2) oscillatornorm=oshe[element]; /* defined above */
-	  for (n=6;n<=HIGHN;++n) {
-	    OSCILLATOR=oscillatornorm/cube((double) n);
-	    if (element!=28) {
-	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
-	    } else if (electron==1) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
-	    } else if (electron==2) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
-	    }
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    /* taking classical value for "ga=gamma" from p. 112-114 B+D */
-	    ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
-	    ALPHA=ga/(4.*PI*DELTANUD);
-	    pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,0.9,1.1,1);
-	  }
-	}
-      }
-    }
+    pion_highn_line_opacity(Nion,sigmav_rad,highn,list,ELEMENTS,HIGHN,oshe,tau_exc,0.9,1.1,1);
   }
 
   /* File root for L-shell input files for Ne through Ca */
@@ -1742,7 +1652,6 @@ int phxi
    * (lines)`, `if (type>1)`, `if (fileincr >= 0)` -- while the malloc at the
    * top is unconditional, so each leaked whenever its branch was skipped.
    * `lines` is 0 at default parameters. Freed here instead. */
-  free(highnfile_name);
   free(H_recfile_name);
   free(He_recfile_name);
   free(specfile_name);
