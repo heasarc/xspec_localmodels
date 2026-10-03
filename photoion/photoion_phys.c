@@ -59,6 +59,12 @@ double pion_HeI_edge(double E) /* Yan, Sadeghpour, Dalgarno (1998) */
 {
   double answer=0.,x;
 
+  /* The fit (their eq. 14) holds at and above threshold only. Below it the
+   * polynomial in x^(-1/2) keeps rising, and pion_HeI_edge_opacity starts at
+   * 0.95*threshold, so without this test He I opacity began 1.2 eV under the
+   * edge. */
+  if (E < 24.58) return 0.;
+
   x=E/24.58;
   answer+=1.;
   answer+=-4.7416/pow(x,1./2.);
