@@ -20,6 +20,10 @@ produces errors of the form "NEUTRAL: Failed to open
 .../photoion_dat/photoion_dat/abundance.dat".
 <p>
 
+What each data file contains, where its values come from, and the known
+errors in the data are described in photoion_dat/README.md.
+<p>
+
 PHOTOION_DIR may be any length. (Versions before 2026 kept the
 constructed filenames in a fixed 130-character buffer, and a path of
 about 100 characters or more aborted XSPEC.)
