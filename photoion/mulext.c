@@ -49,10 +49,18 @@ int mulext
   int i,j,k,LENGTH,E_or_l,SPECBINS;
   char *line;
 
+  for (i=0;i<ne;++i) photar[i]=0.;
+
+  /* mulext.qdp is read from the current directory. Open it before anything is
+   * allocated, so a missing file needs no cleanup. */
+  specfile=fopen("mulext.qdp","r");
+  if (specfile == NULL) {
+    printf("The file 'mulext.qdp' must exist in this directory.\n");
+    return 0;
+  }
+
   LENGTH=1000;
   line=malloc(LENGTH);
-
-  for (i=0;i<ne;++i) photar[i]=0.;
 
   E_or_l = param[0];
   redshift = param[1];
@@ -61,16 +69,14 @@ int mulext
   doppler_v = sqrt((1.+v/ccc)/(1.-v/ccc));
 
   SPECBINS=0;
-  specfile=fopen("mulext.qdp","r");
   for (k=1;k<=3;++k) fgets(line,LENGTH,specfile);    
   while (fgets(line,LENGTH,specfile) != NULL) ++SPECBINS;
-  fclose(specfile);
 
   E_array=pion_dvector(1,SPECBINS);
   E_bin=pion_dvector(1,SPECBINS);
   E_spectrum=pion_dvector(1,SPECBINS);
 
-  specfile=fopen("mulext.qdp","r");
+  rewind(specfile);
   j=1;
   for (k=1;k<=3;++k) fgets(line,LENGTH,specfile);    
   while (fgets(line,LENGTH,specfile) != NULL) {
