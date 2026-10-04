@@ -33,7 +33,8 @@ int pion_cspline_init(struct pion_cspline *s, const double *x, const double *y, 
 void pion_cspline_free(struct pion_cspline *s);
 
 /* The spline at x. Outside [x[0], x[n-1]] the end interval's cubic is
- * continued, which is what the package has always done (open issue 7). */
+ * continued, which is what the package has always done. Callers do evaluate
+ * below x[0]: the edge tables between threshold and their first node. */
 double pion_cspline_eval(struct pion_cspline *s, double x);
 
 /* Bytes owned by a spline of n nodes, for cache accounting. */

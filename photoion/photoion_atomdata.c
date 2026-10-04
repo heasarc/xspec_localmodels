@@ -26,7 +26,6 @@ static int st_abund, st_oshe, st_temp, st_vfull, st_vpart, st_lines, st_highn;
 static double abund[31];
 static double oshe_raw[31];
 static int    oshe_set[31];
-static double oshe_last;
 static double temp_val[31][31];
 static int    temp_set[31][31];
 static struct VERNER_STRUCT vfull[31][31];
@@ -87,7 +86,6 @@ static void reset(void)
   memset(abund, 0, sizeof abund);
   memset(oshe_raw, 0, sizeof oshe_raw);
   memset(oshe_set, 0, sizeof oshe_set);
-  oshe_last = 0.;
   memset(temp_val, 0, sizeof temp_val);
   memset(temp_set, 0, sizeof temp_set);
   memset(vfull, 0, sizeof vfull);
@@ -168,7 +166,6 @@ static void load_oshe(void)
     if (input) {
       while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
         if (element >= 0 && element <= 30) { oshe_raw[element]=djunk; oshe_set[element]=1; }
-        oshe_last=djunk;
       }
       fclose(input);
       st_oshe = LOADED;
@@ -183,12 +180,6 @@ void pion_ad_oscillator_he(double oshe[])
 
   load_oshe();
   for (i=0;i<=30;++i) if (oshe_set[i]) oshe[i]=cube(10.)*oshe_raw[i];
-}
-
-double pion_ad_oscillator_he_lastraw(void)
-{
-  load_oshe();
-  return oshe_last;
 }
 
 void pion_ad_temperature(double **Tion)

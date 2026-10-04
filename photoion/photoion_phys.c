@@ -642,10 +642,12 @@ void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,do
 /* Verner photoionization edges: the full cross sections for H- and He-like
  * ions (He I from Yan et al. instead), and the partial L- and M-shell cross
  * sections. This was the same block in seven models. zmax is the last element
- * in the H-/He-like loop, 28 in most models and 26 in siabs and xiabs; the two
- * agree because verner_photo.dat stops at Z=26. The partial-edge loops run to
- * the number of records each element actually has (open issue 12: they used to
- * scan all 126 slots of an uninitialized array, one past its end). Sets the
+ * in the H-/He-like loop. Every model passes 26: Ni's H- and He-like edges come
+ * from the FAC files (Ni01a, Ni02a), and the Ni rows of verner_photo.dat are
+ * for the emission models' rates, so including them here would count those
+ * edges twice. The partial-edge loops run to the number of records each
+ * element actually has (they used to scan all 126 slots of an uninitialized
+ * array, one past its end, and stale slots added spurious edges). Sets the
  * global THRESHOLD exactly as the inline copies did.
  *
  * Nion is a parameter, not the global: the five absorption models declare a
@@ -802,8 +804,9 @@ void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g
 }
 
 /* The 20000-point photoionization table for the record loaded last: zero
- * (1e-90) below threshold, the 6-point spline up to its last node (open issue
- * 7 covers the region below its first node), the FAC fit above. Then log10
+ * (1e-90) below threshold, the 6-point spline up to its last node (and
+ * continued below its first node; see pion_cspline_eval), the FAC fit
+ * above. Then log10
  * and a compact spline over it (photoion_cspline.c). */
 void pion_fac_build_table(const struct PION_FAC_PIREC *r, double g_i)
 {

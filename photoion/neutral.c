@@ -257,7 +257,7 @@ int neutral
    * data, so every row landed 3 bins late; the header was removed from the
    * file rather than skipped here.) A row with fewer than 3 numbers keeps
    * the previous value, as the original sscanf loop did. */
-  djunk=pion_ad_oscillator_he_lastraw();
+  djunk=0.;
   ntau=pion_ad_neutral_tau(&nntau);
   for (r=0,j=1;r<nntau && j<=SPECBINS;++r,++j) {
     if (ntau[r].n>=3) djunk=ntau[r].v[2];

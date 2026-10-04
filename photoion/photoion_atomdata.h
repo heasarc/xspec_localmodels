@@ -31,10 +31,6 @@ void pion_ad_abundance(double ABUND[]);
  * Other entries are left as they are. */
 void pion_ad_oscillator_he(double oshe[]);
 
-/* The last raw value in oscillator_he.dat. Needed only to keep neutral's
- * neutral.tau header bins bit-for-bit while open issue 11 stands. */
-double pion_ad_oscillator_he_lastraw(void);
-
 /* temperature.dat into Tion[Z][electrons] at the ions listed. */
 void pion_ad_temperature(double **Tion);
 
@@ -53,7 +49,7 @@ const struct HYDROGEN_STRUCT *pion_ad_hydrogen(void);
 const struct HELIUM_STRUCT *pion_ad_helium(void);
 
 /* highn.dat, indexed [Z][electrons], Z = 0..28. The file stops at Z = 26, so
- * Ni (28) reads zeros (see open issue 14). */
+ * Ni (28) reads zeros. */
 const struct HIGHER_ORDER_STRUCT (*pion_ad_highn(void))[3];
 
 /* Element symbol used in the data file names (C N O Ne Mg Al Si S Ar Ca Fe
