@@ -107,18 +107,22 @@ int tauext
   earBIN=earhi-earlo;
   Elo=E_array[j]-E_bin[j]/2.;
   Ehi=E_array[j]+E_bin[j]/2.;
-  while (earhi<=Elo && i<ne-1) {
+  while (earhi<=Elo && i<ne) {
     ++i;
-    earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-    earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-    earBIN=earhi-earlo;
+    if (i<ne) {
+      earlo=1000.*(1.+redshift)*doppler_v*ear[i];
+      earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
+      earBIN=earhi-earlo;
+    }
   }
-  while (Ehi<earlo && j<SPECBINS) {
+  while (Ehi<earlo && j<=SPECBINS) {
     ++j;
-    Elo=E_array[j]-E_bin[j]/2.;
-    Ehi=E_array[j]+E_bin[j]/2.;
+    if (j<=SPECBINS) {
+      Elo=E_array[j]-E_bin[j]/2.;
+      Ehi=E_array[j]+E_bin[j]/2.;
+    }
   }
-  while (j<SPECBINS && i<ne-1) {
+  while (j<=SPECBINS && i<ne) {
     if (Elo<earlo) {
       if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
       else Ewidth=earBIN;
@@ -129,13 +133,17 @@ int tauext
     photar[i]+=Ewidth/earBIN*exp(-tau_norm*E_spectrum[j]);
     if (earhi<Ehi) {
       ++i;
-      earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-      earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-      earBIN=earhi-earlo;
+      if (i<ne) {
+        earlo=1000.*(1.+redshift)*doppler_v*ear[i];
+        earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
+        earBIN=earhi-earlo;
+      }
     } else {
       ++j;
-      Elo=E_array[j]-E_bin[j]/2.;
-      Ehi=E_array[j]+E_bin[j]/2.;
+      if (j<=SPECBINS) {
+        Elo=E_array[j]-E_bin[j]/2.;
+        Ehi=E_array[j]+E_bin[j]/2.;
+      }
     }
   }
 

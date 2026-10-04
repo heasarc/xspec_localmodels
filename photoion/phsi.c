@@ -888,18 +888,22 @@ int phsi
   earBIN=earhi-earlo;
   Elo=E_array[j]-EBIN/2.;
   Ehi=E_array[j]+EBIN/2.;
-  while (earhi<=Elo && i<ne-1) {
+  while (earhi<=Elo && i<ne) {
     ++i;
-    earlo=1000.*(1.+redshift)*ear[i];
-    earhi=1000.*(1.+redshift)*ear[i+1];
-    earBIN=earhi-earlo;
+    if (i<ne) {
+      earlo=1000.*(1.+redshift)*ear[i];
+      earhi=1000.*(1.+redshift)*ear[i+1];
+      earBIN=earhi-earlo;
+    }
   }
-  while (Ehi<earlo && j<SPECBINS) {
+  while (Ehi<earlo && j<=SPECBINS) {
     ++j;
-    Elo=E_array[j]-EBIN/2.;
-    Ehi=E_array[j]+EBIN/2.;
+    if (j<=SPECBINS) {
+      Elo=E_array[j]-EBIN/2.;
+      Ehi=E_array[j]+EBIN/2.;
+    }
   }
-  while (j<SPECBINS && i<ne-1) {
+  while (j<=SPECBINS && i<ne) {
     if (Elo<earlo) {
       if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
       else Ewidth=earBIN;
@@ -912,13 +916,17 @@ int phsi
     else photar[i]+=Ewidth*E_spectrum[j]*(1.+redshift);/* ph/cm^2/s in bin */
     if (earhi<Ehi) {
       ++i;
-      earlo=1000.*(1.+redshift)*ear[i];
-      earhi=1000.*(1.+redshift)*ear[i+1];
-      earBIN=earhi-earlo;
+      if (i<ne) {
+        earlo=1000.*(1.+redshift)*ear[i];
+        earhi=1000.*(1.+redshift)*ear[i+1];
+        earBIN=earhi-earlo;
+      }
     } else {
       ++j;
-      Elo=E_array[j]-EBIN/2.;
-      Ehi=E_array[j]+EBIN/2.;
+      if (j<=SPECBINS) {
+        Elo=E_array[j]-EBIN/2.;
+        Ehi=E_array[j]+EBIN/2.;
+      }
     }
   }
 
