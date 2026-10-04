@@ -25,6 +25,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -33,6 +34,10 @@
 #include "photoion_state.h"
 #include "photoion_phys.h"
 #include "photoion_const.h"
+#include "photoion_atomdata.h"
+#include "photoion_integrate.h"
+#include "photoion_cspline.h"
+#include "photoion_xstab.h"
 
 #define sqr(X) ((X)*(X))
 #define SMALL (1.e-6)
@@ -58,6 +63,12 @@ double pion_EtimesL(double E /*[eV]*/)   /* [photon/s] */
 double pion_HeI_edge(double E) /* Yan, Sadeghpour, Dalgarno (1998) */
 {
   double answer=0.,x;
+
+  /* The fit (their eq. 14) holds at and above threshold only. Below it the
+   * polynomial in x^(-1/2) keeps rising, and pion_HeI_edge_opacity starts at
+   * 0.95*threshold, so without this test He I opacity began 1.2 eV under the
+   * edge. */
+  if (E < 24.58) return 0.;
 
   x=E/24.58;
   answer+=1.;
@@ -169,7 +180,7 @@ double pion_excitsigma(double E0, double OSCILLATOR,double DELTANUD,double ALPHA
   return answer;
 }
 
-double pion_fac_PI_rate_integral(double THRESHOLD,double Labsorb[])
+double pion_fac_PI_rate_integral(double THRESHOLD,const double Labsorb[])
 {
   int k,klo,khi,kth;
   double strength,pitemp=0.;
@@ -337,21 +348,23 @@ double pion_loglinestrength(double logkT, int ntemps)
   return answer;
 }
 
+/* The photoionization tables of the FAC record loaded last: the 6-point
+ * low-energy table (its own copy of the abscissae, since LOWE_EGRID is
+ * reused for other things) and the 20000-point table over a master copy of
+ * EGRID. Both are compact splines (photoion_cspline.c). */
+static double lowe_x[PION_LOWE_N];
+static struct pion_cspline lowe_spline;
+static struct pion_cspline *pi_cur = NULL;     /* the current 20000-point table, usually cached */
+static struct pion_cspline pi_uncached;        /* fallback if the cache cannot take one */
+static double *egrid_master = NULL;
+static const double *egrid_seen = NULL;   /* the EGRID last compared with the master */
+
 double pion_lowEpispline(double E)
 {
   double answer;
   
   E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_PIGRID,LOWE_PIGRID_2,LOWE_GRIDNUM,E,&answer);
-  return pow(10.,answer);
-}
-
-double pion_lowErrspline(double E)
-{
-  double answer;
-  
-  E=log10(E);
-  pion_splint(LOWE_EGRID,LOWE_RRGRID,LOWE_RRGRID_2,LOWE_GRIDNUM,E,&answer);
+  answer=pion_cspline_eval(&lowe_spline,E);
   return pow(10.,answer);
 }
 
@@ -376,7 +389,7 @@ double pion_pispline(double E)
   double answer;
   
   E=log10(E);
-  pion_splint(EGRID,PIGRID,PIGRID_2,GRIDNUM,E,&answer);
+  answer=pion_cspline_eval(pi_cur,E);
   return pow(10.,answer);
 }
 
@@ -387,15 +400,6 @@ double pion_rrsigma(double g_i, double g_j, double p0, double p1, double p2, dou
   E=Te+THRESHOLD;
   answer=sqr(FINE_STRUCTURE)/2.*g_i/g_j*(sqr(E)/Te*(eVtoHartree))*pion_pisigma(g_i,p0,p1,p2,p3,E);
   return answer;
-}
-
-double pion_rrspline(double E)
-{
-  double answer;
-
-  E=log10(E);
-  pion_splint(EGRID,RRGRID,RRGRID_2,GRIDNUM,E,&answer);
-  return pow(10.,answer);
 }
 
 void pion_verner_full_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]) 
@@ -497,7 +501,20 @@ double pion_vernerph(struct VERNER_STRUCT verner, double E)
 double pion_voigt(double alpha,double v)
 {
   int i;
-  double *a,*b,*c;
+  /* Unit-offset coefficient tables; element 0 is unused. These were three
+   * pion_dvector(1,7) allocated and freed on every call, which made calloc/free
+   * a measurable share of line-opacity time. Fixed tables give the same values. */
+  static const double a[8]={0.,
+    122.607931777104326, 214.382388694706425, 181.928533092181549,
+    93.155580458134410, 30.180142196210589, 5.912626209773153,
+    0.564189583562615};
+  static const double b[8]={0.,
+    122.607931773875350, 352.730625110963558, 457.334478783897737,
+    348.703917719495792, 170.354001821091472, 53.992906912940207,
+    10.479857114260399};
+  static const double c[8]={0.,
+    0.5641641, 0.8718681, 1.474395, -19.57862, 802.4513, -4850.316,
+    8031.468};
   double v2,v3,fac1,fac2;
   double p1,p2,p3,p4,p5,p6,p7;
   double o1,o2,o3,o4,o5,o6,o7;
@@ -505,34 +522,6 @@ double pion_voigt(double alpha,double v)
   double r1,r2;
   double H;
  
-  a=pion_dvector(1,7);
-  b=pion_dvector(1,7);
-  c=pion_dvector(1,7);
-
-  a[1]=122.607931777104326;
-  a[2]=214.382388694706425;
-  a[3]=181.928533092181549;
-  a[4]=93.155580458134410;
-  a[5]=30.180142196210589;   
-  a[6]=5.912626209773153;
-  a[7]=0.564189583562615;
-
-  b[1]=122.607931773875350;
-  b[2]=352.730625110963558;
-  b[3]=457.334478783897737;
-  b[4]=348.703917719495792;
-  b[5]=170.354001821091472;
-  b[6]=53.992906912940207;
-  b[7]=10.479857114260399;
-  
-  c[1]=0.5641641;
-  c[2]=0.8718681;
-  c[3]=1.474395;
-  c[4]=-19.57862;
-  c[5]=802.4513;
-  c[6]=-4850.316;
-  c[7]=8031.468;
-  
   if (alpha <= .001 && v >= 2.5) {
     v2   = v * v;
     v3   = 1.0;
@@ -575,10 +564,6 @@ double pion_voigt(double alpha,double v)
     H = (q1 * q2 + r1 * r2) / (q2 * q2 + r2 * r2);
   }
 
-  pion_free_dvector(a,1,7);
-  pion_free_dvector(b,1,7);
-  pion_free_dvector(c,1,7);
-  
   return H;
 }
 
@@ -652,4 +637,451 @@ void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,do
   for (k=SUMlo;k<=SUMhi;++k) {
     tau_exc_p[k]+=Nion_column_density*pion_excitsigma(E0,OSCILLATOR,DELTANUD,ALPHA,E_array[k]);
   }
+}
+
+/* Verner photoionization edges: the full cross sections for H- and He-like
+ * ions (He I from Yan et al. instead), and the partial L- and M-shell cross
+ * sections. This was the same block in seven models. zmax is the last element
+ * in the H-/He-like loop. Every model passes 26: Ni's H- and He-like edges come
+ * from the FAC files (Ni01a, Ni02a), and the Ni rows of verner_photo.dat are
+ * for the emission models' rates, so including them here would count those
+ * edges twice. The partial-edge loops run to the number of records each
+ * element actually has (they used to scan all 126 slots of an uninitialized
+ * array, one past its end, and stale slots added spurious edges). Sets the
+ * global THRESHOLD exactly as the inline copies did.
+ *
+ * Nion is a parameter, not the global: the five absorption models declare a
+ * local Nion (and N_e, sigmav_rad, v_rad) that shadows the one in
+ * photoion_state.h, so the global is NULL there. Shared code must never read
+ * those four globals. */
+void pion_verner_edges(double **Nion,
+                       const struct VERNER_STRUCT (*vernerionizsigma)[31],
+                       const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],
+                       const int npartial[], int zmax, double tau_p[])
+{
+  int element, electron, j;
+
+  /* Photoionization opacity for H- and He-like */
+  for (element=1;element<=zmax;++element) {
+    for (electron=1;electron<=2;++electron) {
+      if (Nion[element][electron]) {
+	if (element==2 && electron==2) {
+	  THRESHOLD=24.58;
+	  pion_HeI_edge_opacity(Nion[element][electron],THRESHOLD,tau_p);
+	} else {
+	  THRESHOLD=vernerionizsigma[element][electron].Eth;
+	  pion_verner_full_edge_opacity(Nion[element][electron],THRESHOLD,vernerionizsigma[element][electron],tau_p);
+	}
+      }
+    }
+  }
+
+  /* From Verner table: L-shell edges for C,N,O */
+  for (element=6;element<=8;++element) {
+    for (electron=3;electron<=8;++electron) {
+      if (Nion[element][electron]) {
+	for (j=0;j<npartial[element];++j) {
+	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=2) {
+	    THRESHOLD=partialsigma[element][j].Eth;
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_p);
+	  }
+	}
+      }
+    }
+  }
+
+  /* From Verner table: Get L-shell edges for C,N,O and M-shell edges for M-shell ions */
+  for (element=1;element<=28;++element) {
+    for (electron=11;electron<=28;++electron) {
+      if (Nion[element][electron] && !(electron <=20 && (element == 26 || element == 28))) {
+	for (j=0;j<npartial[element];++j) {
+	  if (partialsigma[element][j].electron==electron && partialsigma[element][j].principal>=3) {
+	    THRESHOLD=partialsigma[element][j].Eth;
+	    pion_verner_partial_edge_opacity(Nion[element][electron],THRESHOLD,partialsigma[element][j],tau_p);
+	  }
+	}
+      }
+    }
+  }
+}
+
+/* Low-n (n <= 5) photoexcitation opacity of H- and He-like ions, from the
+ * line.dat rows in file order: LINE <= 4 for H-like and LINE <= 6 for He-like,
+ * where the ion has a column and the line an oscillator strength. This was the
+ * same loop in all eight models, fused with the file read. Only pad_lo,
+ * pad_hi and clamp_both differed (emission 0.9, 1.1, 1; absorption 1.0, 1.0, 0;
+ * see pion_line_limits). The callers test `lines`. Nion and sigmav_rad are
+ * parameters because the absorption models shadow both globals. */
+void pion_lown_line_opacity(double **Nion, double sigmav_rad,
+                            const struct PION_LINE_ROW *rows, int nrows,
+                            double tau_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int r, element, electron, LINE;
+  double E0, OSCILLATOR, Atemp, ga, DELTANUD, ALPHA;
+
+  for (r=0;r<nrows;++r) {
+    element=rows[r].element;
+    electron=rows[r].electron;
+    LINE=rows[r].LINE;
+    if (electron == 1) {
+      if (!(Nion[element][electron] && rows[r].f && LINE <= 4)) continue;
+    } else if (electron == 2) {
+      if (!(Nion[element][electron] && rows[r].f && LINE <= 6)) continue;
+    } else continue;
+    E0=1000.*HC_KEV_ANGSTROM/rows[r].WAVE;
+    E0=E0*doppler_rad;
+    OSCILLATOR=rows[r].f;
+    Atemp=rows[r].A;
+    ga=Atemp;
+    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+    ALPHA=ga/(4.*PI*DELTANUD);
+    pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_p,pad_lo,pad_hi,clamp_both);
+  }
+}
+
+/* High-n (6 <= n <= HIGHN) photoexcitation opacity of H- and He-like ions, for
+ * the elements in list[1..nlist]. Oscillator strengths scale as n^-3 (1.6 for
+ * H-like, Bethe & Salpeter p. 265; oshe for He-like); Ni uses Fe's
+ * wavelengths, scaled. Same in all eight models apart from the pad arguments. */
+void pion_highn_line_opacity(double **Nion, double sigmav_rad,
+                             const struct HIGHER_ORDER_STRUCT (*highn)[3],
+                             const int list[], int nlist, int HIGHN, const double oshe[],
+                             double tau_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int i, n, element, electron;
+  double E0=0., OSCILLATOR, oscillatornorm=0., ga, DELTANUD, ALPHA;
+
+  for (i=1;i<=nlist;++i) {
+    element=list[i];
+    for (electron=1;electron<=2;++electron) {
+      if (Nion[element][electron]) {
+	if (electron==1) oscillatornorm=1.6; /* Bethe-Salpeter p. 265 */
+	if (electron==2) oscillatornorm=oshe[element];
+	for (n=6;n<=HIGHN;++n) {
+	  OSCILLATOR=oscillatornorm/cube((double) n);
+	  if (element!=28) {
+	    E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
+	  } else if (electron==1) {/* Use Fe numbers for Ni */
+	    E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
+	  } else if (electron==2) {/* Use Fe numbers for Ni */
+	    E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
+	  }
+	  E0=E0*doppler_rad;
+	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+	  /* taking classical value for "ga=gamma" from p. 112-114 B+D */
+	  ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
+	  ALPHA=ga/(4.*PI*DELTANUD);
+	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  }
+}
+
+/* Put one FAC pi_short record where the photoionization table code reads it:
+ * the globals THRESHOLD and ANGULAR (pion_pisigma and pion_dfdE use both),
+ * LOWE_EGRID/LOWE_PIGRID with their log10 transforms, and the 6-point spline.
+ * g_i and g_j come back with the +1 every caller applied. This is the body of
+ * the models' read loop, after the fscanf calls. */
+void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g_j)
+{
+  int k;
+
+  if (LOWE_GRIDNUM != PION_LOWE_N) pion_error("pion_fac_load_record: LOWE_GRIDNUM is not 6");
+  THRESHOLD=r->THRESHOLD;
+  ANGULAR=r->ANGULAR;
+  *g_i=r->g_i+1.;
+  *g_j=r->g_j+1.;
+  for (k=1;k<=LOWE_GRIDNUM;++k) {
+    LOWE_EGRID[k]=r->grid[k-1][0];
+    LOWE_PIGRID[k]=r->grid[k-1][2];
+    LOWE_EGRID[k]=log10(LOWE_EGRID[k]+THRESHOLD);
+    LOWE_PIGRID[k]=log10(1.e-20*LOWE_PIGRID[k]);
+  }
+  for (k=1;k<=LOWE_GRIDNUM;++k) lowe_x[k-1]=LOWE_EGRID[k];
+  pion_cspline_free(&lowe_spline);
+  pion_cspline_init(&lowe_spline,lowe_x,LOWE_PIGRID+1,LOWE_GRIDNUM);
+}
+
+/* The 20000-point photoionization table for the record loaded last: zero
+ * (1e-90) below threshold, the 6-point spline up to its last node (and
+ * continued below its first node; see pion_cspline_eval), the FAC fit
+ * above. Then log10
+ * and a compact spline over it (photoion_cspline.c). */
+void pion_fac_build_table(const struct PION_FAC_PIREC *r, double g_i)
+{
+  int k;
+  double p0=r->p[0], p1=r->p[1], p2=r->p[2], p3=r->p[3];
+  struct pion_cspline *t;
+
+  /* EGRID is rebuilt with the same values every evaluation; keep one master
+   * copy for the tables to reference, refreshed only if it changes -- and
+   * then every cached table is stale, so drop them. */
+  if (egrid_master==NULL) {
+    egrid_master=malloc((size_t) GRIDNUM*sizeof *egrid_master);
+    if (egrid_master==NULL) { pion_error("pion_fac_build_table: out of memory"); return; }
+    memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    egrid_seen=EGRID;
+  } else if (EGRID!=egrid_seen) {   /* a new evaluation's array: compare once */
+    if (memcmp(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master)!=0) {
+      pion_xstab_flush();
+      memcpy(egrid_master,EGRID+1,(size_t) GRIDNUM*sizeof *egrid_master);
+    }
+    egrid_seen=EGRID;
+  }
+
+  /* A table depends only on its record: reuse it if it is cached. */
+  t=pion_xstab_lookup(r);
+  if (t) { pi_cur=t; return; }
+
+  /* PHOTOIONIZATION OUT OF GRD STATE OF n+1 ION */
+  for (k=1;k<=GRIDNUM;++k) {
+    if (EGRID[k]<log10(THRESHOLD)) PIGRID[k]=1.e-90;
+    else if (EGRID[k]>=log10(THRESHOLD) && EGRID[k]<=LOWE_EGRID[LOWE_GRIDNUM]) PIGRID[k]=pion_lowEpispline(pow(10.,EGRID[k]));
+    else PIGRID[k]=pion_pisigma(g_i,p0,p1,p2,p3,pow(10.,EGRID[k]));
+  }
+  for (k=1;k<=GRIDNUM;++k) PIGRID[k]=log10(PIGRID[k]);
+
+  t=pion_xstab_insert(r,GRIDNUM);
+  if (t!=NULL && pion_cspline_init(t,egrid_master,PIGRID+1,GRIDNUM)!=0) {
+    pion_xstab_forget(r);
+    t=NULL;
+  }
+  if (t==NULL) {   /* no room or no memory: build it uncached */
+    pion_cspline_free(&pi_uncached);
+    pion_cspline_init(&pi_uncached,egrid_master,PIGRID+1,GRIDNUM);
+    t=&pi_uncached;
+  }
+  pi_cur=t;
+}
+
+/* Edges of one FAC pi_short file: build each record's table if the edge
+ * clears tau_lim at gate_factor*threshold, and add its opacity. */
+static void fac_edges(double Nion_ion, int shell, int Z, int nelec, double gate_factor, double tau_edge_p[])
+{
+  int r, n;
+  double g_i, g_j;
+  const struct PION_FAC_PIREC *rec = pion_ad_fac_pi(shell, Z, nelec, &n);
+
+  for (r=0;r<n;++r) {
+    pion_fac_load_record(&rec[r], &g_i, &g_j);
+    if (Nion_ion*pion_pisigma(g_i,rec[r].p[0],rec[r].p[1],rec[r].p[2],rec[r].p[3],gate_factor*THRESHOLD) >= tau_lim) {
+      pion_fac_build_table(&rec[r], g_i);
+      /* calculate opacity of given edge and modify "tau" accordingly */
+      pion_fac_edge_opacity(Nion_ion,THRESHOLD,tau_edge_p);
+    }
+  }
+}
+
+/* Lines of one FAC tr_short file inside [EMIN, EMAX] that clear tau_lim. */
+static void fac_lines(double Nion_ion, double sigmav_rad, int shell, int Z, int nelec,
+                      double tau_exc_p[], double pad_lo, double pad_hi, int clamp_both)
+{
+  int r, n;
+  double g_i, ftemp, E0, DELTANUD, OSCILLATOR, ga, ALPHA;
+  const struct PION_FAC_TRROW *row = pion_ad_fac_tr(shell, Z, nelec, &n);
+
+  for (r=0;r<n;++r) {
+    g_i=row[r].g_i+1.;
+    ftemp=row[r].f/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
+    E0=row[r].en;
+    E0=E0*doppler_rad;
+    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
+    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion_ion) {
+      OSCILLATOR=ftemp;
+      ga=row[r].A;
+      ALPHA=ga/(4.*PI*DELTANUD);
+      pion_line_opacity(Nion_ion,E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc_p,pad_lo,pad_hi,clamp_both);
+    }
+  }
+}
+
+/* The three FAC shell blocks that were copied into every model:
+ *   PION_FAC_L_NE_NI  L shell, Ne..Ni, 3-10 electrons (and Ni's 1-2)
+ *   PION_FAC_L_C_O    L shell, C..O,  3-8 electrons
+ *   PION_FAC_M        M shell, Mg..Ni, 11-28 electrons; lines before edges,
+ *                     and the edge gate at 1.01*threshold
+ * do_edges is 0 only in neutral, which takes its edges from neutral.tau.
+ * do_lines is the model's `lines`. Edges add to tau_edge_p and lines to
+ * tau_exc_p, each in the original order. Nion and sigmav_rad are parameters
+ * because the absorption models shadow both globals. */
+void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
+                            int do_edges, int do_lines, int verbose,
+                            double tau_edge_p[], double tau_exc_p[],
+                            double pad_lo, double pad_hi, int clamp_both)
+{
+  int element, electron;
+
+  if (which == PION_FAC_L_NE_NI) {
+    for (element=10;element<=28;++element) {
+      for (electron=1;electron<=10;++electron) {
+	if (Nion[element][electron] && (electron>=3 || element==28)) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_L_SHELL,element,electron,1.0,tau_edge_p);
+	  if (do_lines && electron>=3)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_L_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  } else if (which == PION_FAC_L_C_O) {
+    for (element=6;element<=8;++element) {
+      for (electron=3;electron<=8;++electron) {
+	if (Nion[element][electron]) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_L_SHELL,element,electron,1.0,tau_edge_p);
+	  if (do_lines)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_L_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	}
+      }
+    }
+  } else if (which == PION_FAC_M) {
+    for (element=12;element<=28;++element) {
+      for (electron=11;electron<=28;++electron) {
+	if (Nion[element][electron]) {
+	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
+	  if (do_lines)
+	    fac_lines(Nion[element][electron],sigmav_rad,PION_M_SHELL,element,electron,tau_exc_p,pad_lo,pad_hi,clamp_both);
+	  if (do_edges) fac_edges(Nion[element][electron],PION_M_SHELL,element,electron,1.01,tau_edge_p);
+	}
+      }
+    }
+  }
+}
+
+/* Ion columns from an ionization-parameter distribution (xiabs, phxi). The
+ * user's xi.dat (cwd, read every evaluation) gives the distribution; the
+ * cached xi_ions.dat gives each ion's fraction as a function of xi; each
+ * column is the distribution-weighted integral, normalized to N_H through
+ * H. Moved from xiabs.c, where phxi had the same code in a different but
+ * equivalent statement order. Returns 1 if xi.dat is missing (the models
+ * return 0 then, as they always did), else 0. Nion and *N_e_p are the
+ * model's (absorption models shadow both globals). */
+int pion_xi_columns(double **Nion, double *N_e_p, double N_H, const double ABUND[], int verbose)
+{
+  int i,j,k,element,electron;
+  double djunk,N_e_acc,**ion;
+  FILE *input;
+  const struct PION_XI_IONS *xd;
+
+  input=fopen("xi.dat","r");
+  if (input==NULL) {
+    printf("The file 'xi.dat' must exist in this directory.\n");
+    printf("See $DATADIR/photoion_dat/xi.dat for an example.\n");
+    return 1;
+  }
+  FRACXINUM=0;
+  while (fscanf(input,"%lf%lf",&djunk,&djunk)!=EOF) ++FRACXINUM;
+  fclose(input);
+  xi_frac_grid=pion_dvector(1,FRACXINUM);  
+  frac_grid=pion_dvector(1,FRACXINUM);  
+  
+  input=fopen("xi.dat","r");
+  for (i=1;i<=FRACXINUM;++i) fscanf(input,"%lf%lf",&(xi_frac_grid[i]),&(frac_grid[i]));
+  fclose(input);
+
+  xd=pion_ad_xi_ions();
+  if (xd==NULL) {   /* reported by the loader; the model fails at its end */
+    pion_free_dvector(xi_frac_grid,1,FRACXINUM);
+    pion_free_dvector(frac_grid,1,FRACXINUM);
+    *N_e_p=0.;
+    return 0;
+  }
+  FIONXINUM=xd->nxi;
+  xi_fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid=pion_dvector(1,FIONXINUM);  
+  fion_grid_2=pion_dvector(1,FIONXINUM);  
+  ion=pion_dmatrix(1,29,1,FIONXINUM);
+
+  /* read in each element - where subscript for ion[2][i] = ROMAN numeral*/
+  /* hydrogen */
+  element=1;
+  HNORM=0.;
+  N_e_acc=0.;
+  for (i=1;i<=FIONXINUM;++i) {
+    xi_fion_grid[i]=xd->xi[1][i-1];
+    for (k=1;k<=element+1;++k) {
+      ion[k][i]=xd->frac[1][(k-1)*FIONXINUM+i-1];
+      ion[k][i]=fabs(ion[k][i]);
+    }
+  }
+
+  xi_array=pion_dvector(1,XINUM);
+  fion_array=pion_dvector(1,XINUM);
+  fion_array_2=pion_dvector(1,XINUM);
+  for (i=1;i<=XINUM;++i) xi_array[i]=XIMIN+(XIMAX-XIMIN)*((double) i-1)/((double) (XINUM-1));
+
+  N_e_acc=0.;
+  HNORM=0.;
+  for (k=1;k<=element+1;++k) {
+    for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
+    pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+    for (i=1;i<=XINUM;++i) fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
+    pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+
+    electron=element-k+1;
+    if (electron>=1) Nion[element][electron]=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    if (electron==0) N_e_acc+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+    HNORM+=pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+  }
+  Nion[1][1]=Nion[1][1]*N_H/HNORM;
+  N_e_acc=N_e_acc*N_H/HNORM;
+  if (verbose) printf("Nion[%2d][%2d]=%e\n",element,element,Nion[element][element]);
+  
+  /* All other elements: He, C, N, O, Ne, Mg, Si, S, Ar, Ca, Fe */
+  /* Aluminum and Nickel not calculated by xstar */
+  for (j=2;j<=12;++j) {
+    element=PION_XI_Z[j];
+    for (i=1;i<=FIONXINUM;++i) {
+      xi_fion_grid[i]=xd->xi[j][i-1];
+      for (k=1;k<=element+1;++k) {
+	ion[k][i]=xd->frac[j][(k-1)*FIONXINUM+i-1];
+	ion[k][i]=fabs(ion[k][i]);
+      }
+    }
+    for (k=1;k<=element+1;++k) {
+      fion_integrate=0;
+      for (i=1;i<=FIONXINUM;++i) fion_grid[i]=ion[k][i];
+      pion_spline(xi_fion_grid,fion_grid,FIONXINUM,1.e40,1.e40,fion_grid_2);
+	/*      printf("%e  %e  %e  %e\n",xi_fion_grid[i],pion_frac(xi_fion_grid[i]),fion_grid[i],ion[k][i]);*/
+      
+      fion_integrate=0;
+      for (i=1;i<=XINUM;++i) {
+	fion_array[i]=pion_frac(xi_array[i])*pion_fion(xi_array[i]);
+	if (fion_array[i]!=0.) fion_integrate=1;
+      }
+      if (fion_integrate) {
+	pion_spline(xi_array,fion_array,XINUM,1.e40,1.e40,fion_array_2);
+	electron=element-k+1;
+	if (electron>=1) {
+	  Nion[element][electron]=ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+	}
+	if (electron>=1) N_e_acc+=((double) (element-electron))*Nion[element][electron];
+	else N_e_acc+=((double) (element-electron))*ABUND[element]*N_H/HNORM*pion_integrate(pion_fion_integrand,XIMIN,XIMAX);
+      }
+    }
+  }
+
+  for (element=2;element<=28;++element) {
+    for (electron=1;electron<=28;++electron) {
+      if (Nion[element][electron]) {
+        Nion[element][electron]=fabs(Nion[element][electron]);
+	if (verbose) printf("Nion[%2d][%2d]=%e\n",element,electron,Nion[element][electron]);
+      }
+    }
+  }
+  if (verbose) printf("N_e=%e\n",N_e_acc);
+
+
+  pion_free_dvector(xi_frac_grid,1,FRACXINUM);
+  pion_free_dvector(frac_grid,1,FRACXINUM);
+  pion_free_dmatrix(ion,1,29,1,FIONXINUM);
+  pion_free_dvector(xi_fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid,1,FIONXINUM);
+  pion_free_dvector(fion_grid_2,1,FIONXINUM);
+  pion_free_dvector(xi_array,1,XINUM);
+  pion_free_dvector(fion_array,1,XINUM);
+  pion_free_dvector(fion_array_2,1,XINUM);
+
+  *N_e_p=N_e_acc;
+  return 0;
 }

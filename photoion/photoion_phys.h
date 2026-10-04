@@ -29,6 +29,79 @@ struct VERNER_PARTIAL_STRUCT {
   double yw;
 };
 
+/* line.dat: H-like (LINE 1..6) and He-like (LINE 1..9) lines, indexed by Z.
+ * Moved here from inside each model function, where all eight were identical. */
+struct HYDROGEN_STRUCT {
+  double lambda[8];
+  double f[8];
+  double A[8];
+  double b[8]; /* branching ratios? (never set) */
+};
+struct HELIUM_STRUCT {
+  double lambda[11];
+  double f[11];
+  double A[11];
+  double b[11]; /* branching ratios? (never set) */
+};
+/* One line.dat row, in file order. */
+struct PION_LINE_ROW {
+  int element, electron, LINE;
+  double WAVE, A, f;
+};
+/* FAC photoionization record from a {L,M}_shell/<El><nn>a.pi_short file, raw
+ * as the file gives it: header (lower level i, 2J g_i, upper level j, 2J g_j,
+ * threshold [eV], angular momentum), the fit parameters p0..p3, and the
+ * 6-point table of (E - threshold, RR sigma, PI sigma [Mb], column 4). The
+ * models apply g+1, log10 and the 1e-20 scaling at the point of use. */
+#define PION_LOWE_N 6
+struct PION_FAC_PIREC {
+  int i, j;
+  double g_i, g_j, THRESHOLD, ANGULAR;
+  double p[4];
+  double grid[PION_LOWE_N][4];
+  void *cache;   /* this record's cached 20000-point table (photoion_xstab.c), or NULL */
+};
+/* FAC transition row from a ....tr_short file, raw: upper level j and its
+ * 2J g_j, lower level i and its 2J g_i, energy [eV], oscillator strength, A. */
+struct PION_FAC_TRROW {
+  int j, i;
+  double g_j, g_i, en, f, A;
+};
+enum { PION_L_SHELL = 0, PION_M_SHELL = 1 };
+
+/* L_shell/trates<El>.dat: for each ion (3..10 electrons), RECNUM = 10 rows of
+ * (index, kT, total RR, total DR rate [1e-10]). */
+struct PION_TRATES_ROW { int ijunk; double T, RR, DR; };
+/* L_shell/<El><nn>a.tr_shorter: upper level, its J index, lower level, its
+ * J index, energy [eV], f, A. */
+struct PION_TRSHORTER_ROW { int j, jjunk, i, ijunk; double en, f, A; };
+/* L_shell/<El><nn>.dat: RR/DR line or RRC data in groups of 10 rows, one per
+ * temperature: (index, kT, type, lower, upper, energy, lambda, RR, DR). */
+struct PION_RRLINE_ROW { int ijunk; double kT; int typenum, itemp, jtemp; double en, lambda, RR, DR; };
+
+/* H_recombination.dat / He_recombination.dat, indexed by Z, at the
+ * PION_REC_TEMPERATURES temperatures (1-based). The emission models' own
+ * TEMPERATURES macro is this same 11. */
+#define PION_REC_TEMPERATURES 11
+struct H_REC_STRUCT {
+  double T[PION_REC_TEMPERATURES+1];
+  double lines[6][PION_REC_TEMPERATURES+1];
+  double rrc[PION_REC_TEMPERATURES+1];
+  double C[PION_REC_TEMPERATURES+1];
+};
+struct HE_REC_STRUCT {
+  double T[PION_REC_TEMPERATURES+1];
+  double lines[9][PION_REC_TEMPERATURES+1];
+  double rrc[PION_REC_TEMPERATURES+1];
+  double C[PION_REC_TEMPERATURES+1];
+};
+
+/* highn.dat: lambda and f for principal quantum number n, indexed [Z][electrons]. */
+struct HIGHER_ORDER_STRUCT {
+  double lambda[101];
+  double f[101];
+};
+
 double pion_DR_line_spline(double temp);
 double pion_EtimesL(double E );
 double pion_HeI_edge(double E);
@@ -41,7 +114,7 @@ double pion_RR_line_spline(double temp);
 double pion_dfdE(double g_i,double p0, double p1, double p2, double p3, double Te);
 double pion_doppler(double v );
 double pion_excitsigma(double E0, double OSCILLATOR,double DELTANUD,double ALPHA, double E);
-double pion_fac_PI_rate_integral(double THRESHOLD,double Labsorb[]);
+double pion_fac_PI_rate_integral(double THRESHOLD,const double Labsorb[]);
 double pion_fac_ionizsigma(double THRESHOLD, double E);
 double pion_fac_recombination(double g_i,double g_j,double p0,double p1,double p2,double p3,double kT, double Te);
 double pion_fion(double xi);
@@ -54,12 +127,10 @@ double pion_hubble_integrate(double z );
 double pion_integrand(double temp);
 double pion_loglinestrength(double logkT, int ntemps);
 double pion_lowEpispline(double E);
-double pion_lowErrspline(double E);
 double pion_maxwell(double Te, double kT, double NORM);
 double pion_pisigma(double g_i, double p0, double p1, double p2, double p3, double E);
 double pion_pispline(double E);
 double pion_rrsigma(double g_i, double g_j, double p0, double p1, double p2, double p3, double Te );
-double pion_rrspline(double E);
 double pion_verner_recombination(struct VERNER_STRUCT vioniz, double kT, double E);
 double pion_vernerpartialph(struct VERNER_PARTIAL_STRUCT verner, double E);
 double pion_vernerph(struct VERNER_STRUCT verner, double E);
@@ -68,6 +139,25 @@ void pion_HeI_edge_opacity(double Nion_column_density, double THRESHOLD, double 
 void pion_fac_edge_opacity(double Nion_column_density, double THRESHOLD, double tau_p[]);
 void pion_verner_full_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_STRUCT verner, double tau_p[]);
 void pion_verner_partial_edge_opacity(double Nion_column_density, double THRESHOLD, struct VERNER_PARTIAL_STRUCT verner, double tau_p[]);
+void pion_lown_line_opacity(double **Nion, double sigmav_rad,
+                            const struct PION_LINE_ROW *rows, int nrows,
+                            double tau_p[], double pad_lo, double pad_hi, int clamp_both);
+void pion_highn_line_opacity(double **Nion, double sigmav_rad,
+                             const struct HIGHER_ORDER_STRUCT (*highn)[3],
+                             const int list[], int nlist, int HIGHN, const double oshe[],
+                             double tau_p[], double pad_lo, double pad_hi, int clamp_both);
+enum { PION_FAC_L_NE_NI, PION_FAC_L_C_O, PION_FAC_M };
+void pion_fac_load_record(const struct PION_FAC_PIREC *r, double *g_i, double *g_j);
+void pion_fac_build_table(const struct PION_FAC_PIREC *r, double g_i);
+void pion_fac_shell_opacity(int which, double **Nion, double sigmav_rad,
+                            int do_edges, int do_lines, int verbose,
+                            double tau_edge_p[], double tau_exc_p[],
+                            double pad_lo, double pad_hi, int clamp_both);
+int pion_xi_columns(double **Nion, double *N_e_p, double N_H, const double ABUND[], int verbose);
+void pion_verner_edges(double **Nion,
+                       const struct VERNER_STRUCT (*vernerionizsigma)[31],
+                       const struct VERNER_PARTIAL_STRUCT (*partialsigma)[125],
+                       const int npartial[], int zmax, double tau_p[]);
 
 void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both);
 void pion_line_opacity(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double tau_exc_p[],double pad_lo,double pad_hi,int clamp_both);

@@ -146,7 +146,8 @@ static struct slot *slot_get(const double *key, const double *x, const double *y
  *
  * That difference is not academic here: 18.7% of the pion_lowEpispline calls in
  * xiabs are below the grid, ~285000 per evaluation, because the caller's guard
- * tests the wrong bound (open issue 7). Rejecting them would poison the output;
+ * tests the threshold rather than the table's first node. Rejecting them
+ * would poison the output;
  * the decision was to preserve the existing behavior exactly and treat the guard
  * as a separate question.
  *

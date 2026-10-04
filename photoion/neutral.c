@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "photoion_phys.h"
+#include "photoion_atomdata.h"
 #include "photoion_const.h"
 
 #include "photoion_state.h"
@@ -42,31 +43,12 @@ int neutral
     photar[i] = [photons/cm^2/s] for bin ear[i] -> ear[i+1]
     param[0] -> param[TOTAL-1]   gives XSPEC parameters from 1 to TOTAL*/
 
-  struct VERNER_STRUCT vernerionizsigma[31][31];
 
-  struct VERNER_PARTIAL_STRUCT partialsigma[29][125];
+  const struct PION_LINE_ROW *line_rows;   /* line.dat, cached */
+  int nline_rows;
 
-  struct HYDROGEN_STRUCT {
-    double lambda[8];
-    double f[8];
-    double A[8];
-    double b[8]; /* branching ratios? */
-  };
-  struct HYDROGEN_STRUCT hydrogen[27];
   
-  struct HELIUM_STRUCT {
-    double lambda[11];
-    double f[11];
-    double A[11];
-    double b[11]; /* branching ratios? */
-  };
-  struct HELIUM_STRUCT helium[27];
   
-  struct HIGHER_ORDER_STRUCT {
-    double lambda[101];
-    double f[101];
-  };
-  struct HIGHER_ORDER_STRUCT highn[27][3];
 
   double redshift,v_rad,sigmav_rad,N_e,**Nion;
   int verbose;
@@ -74,25 +56,19 @@ int neutral
   double Elo,Ehi; /* Voigt function param.'s */
   double earBIN,Ewidth;
 
-  double *E_bin,bin;
+  const struct PION_NTAU_ROW *ntau;   /* neutral.tau, cached */
+  int nntau,r;
   
   /* junk values for strings, ints, and floats */
-  char *sjunk,*line,*sjunk1,*sjunk2,*sjunk3,*sjunk4;
   double djunk;
 
-  double g_i,g_j;
 
   double ELO=1.e-3,EHI=1.e6;  /* MAKE SURE THIS RANGE IS OK!!! CHECK HERE!!! */
 
-  double en,Atemp,ftemp,ga;
 
-  char *root,*element_name,*temp;
-  const char *ext;   /* always a string literal, never owned */
   int i,j,k,n;
   /* *.en file */
-  double energy;
 
-  double grounddeg[3],leveldeg[3][11],freedeg[3];
 
   double earlo,earhi;
   
@@ -100,13 +76,8 @@ int neutral
 
   int ELEMENTS=12;
 
-  double E0=0.,DELTANUD,ALPHA,OSCILLATOR;
 
-  int element,electron,element_prev=0,principal,angular;
-  int LINE;
-  double WAVE,AMtemp,fMtemp;
-  double Emax,Ezero,Eth,s0,ya,P,yw,y0,y1;
-  double Etemp;
+  int element,electron;
 
   int *list;
 
@@ -115,20 +86,18 @@ int neutral
 
   double **H_excite, **He_excite;
 
-  double *ABUND,*oshe,oscillatornorm=0.;
+  double *ABUND,*oshe;
 
   int klo,khi,jlow,jhigh;
 
   int DIST,lines;
 
-  FILE *vernerphoto,*vernerpartial,*linedat,*highnfile;
-  char *vernerphoto_name,*vernerpartial_name,*linedat_name,*highnfile_name;
-  FILE *input;
 
   /* initialize photar array */
   for (i=0;i<ne;++i) photar[i]=0.;
 
   DATADIR=FGMSTR(name);
+  pion_ad_begin(DATADIR);
 
   /* Probe for the atomic data before anything is allocated. The open below
    * is checked, but it returns with ~15 allocations already live, and this
@@ -147,47 +116,24 @@ int neutral
   }
 
   /* FILE NAMES */
-  vernerphoto_name=malloc(200);
-  vernerpartial_name=malloc(200);
-  linedat_name=malloc(200);
-  highnfile_name=malloc(200);
 
-  root=malloc(200);
-  element_name=malloc(3);  /* 2-char symbols ("Ne") need 3 bytes with the NUL */
-  temp=malloc(130);
-  sjunk=malloc(50);
-  sjunk1=malloc(50);
-  sjunk2=malloc(50);
-  sjunk3=malloc(50);
-  sjunk4=malloc(50);
-  line=malloc(400);
 
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
 
 
   ABUND=pion_dvector(1,30);
-  for (i=1;i<=30;++i) ABUND[i]=0.;
-  sprintf(temp,"%s/photoion_dat/abundance.dat",DATADIR);
-  input=fopen(temp,"r");
-  if ( input == NULL ) {
-    printf("NEUTRAL: Failed to open %s\n", temp);
-    return 1;
-  }
-  while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
-    ABUND[element]=djunk;
-  }
-  fclose(input);
+  pion_ad_abundance(ABUND);
 
   oshe=pion_dvector(1,30);
-  sprintf(temp,"%s/photoion_dat/oscillator_he.dat",DATADIR);
-  input=fopen(temp,"r");
-  while (fscanf(input,"%d%lf",&element,&djunk)!=EOF) {
-    oshe[element]=cube(10.)*djunk;
-  }
-  fclose(input);
+  pion_ad_oscillator_he(oshe);
 
   Nion[1][1]=param[0];
+  /* No electron scattering is added through N_e: it was never assigned in
+   * the original code, so it held whatever the stack did (in practice
+   * about 0). It is now 0 by definition. neutral's scattering, n_e sigma_T
+   * per H, is already in neutral.tau. */
+  N_e=0.;
   /*djunk=param[1]; ABUND[2]*=djunk;*/  Nion[2][2]=ABUND[2]*Nion[1][1];
   /*djunk=param[2]; ABUND[6]*=djunk;*/  Nion[6][6]=ABUND[6]*Nion[1][1];
   /*djunk=param[3]; ABUND[7]*=djunk;*/  Nion[7][7]=ABUND[7]*Nion[1][1];
@@ -234,15 +180,9 @@ int neutral
 
   EGRID=pion_dvector(1,GRIDNUM);  
   PIGRID=pion_dvector(1,GRIDNUM); 
-  PIGRID_2=pion_dvector(1,GRIDNUM);
-  RRGRID=pion_dvector(1,GRIDNUM);  
-  RRGRID_2=pion_dvector(1,GRIDNUM);
 
   LOWE_EGRID=pion_dvector(1,LOWE_GRIDNUM);  
   LOWE_PIGRID=pion_dvector(1,LOWE_GRIDNUM); 
-  LOWE_PIGRID_2=pion_dvector(1,LOWE_GRIDNUM);
-  LOWE_RRGRID=pion_dvector(1,LOWE_GRIDNUM); 
-  LOWE_RRGRID_2=pion_dvector(1,LOWE_GRIDNUM);
 
   E_array=pion_dvector(1,SPECBINS);       /* energy axis */
   tau=pion_dvector(1,SPECBINS);           /* total opacity in all ions */
@@ -289,43 +229,6 @@ int neutral
     EGRID[k]=((double) k-1.)/((double) GRIDNUM)*log10(EHI/ELO)+log10(ELO);
   }
 
-  /*  Reading in Total Photoionization Cross Sections (Verner)  */
-  sprintf(vernerphoto_name,"%s/photoion_dat/verner_photo.dat",DATADIR);
-  vernerphoto=fopen(vernerphoto_name,"r");
-  while (fscanf(vernerphoto,"%d%d%lf%lf%lf%lf%lf%lf%lf%lf%lf",&element,&electron,&Eth,&Emax,&Ezero,&s0,&ya,&P,&yw,&y0,&y1)!=EOF) {
-    vernerionizsigma[element][electron].Eth=Eth;
-    vernerionizsigma[element][electron].Emax=Emax;
-    vernerionizsigma[element][electron].Ezero=Ezero;
-    vernerionizsigma[element][electron].s0=s0;
-    vernerionizsigma[element][electron].ya=ya;
-    vernerionizsigma[element][electron].P=P;
-    vernerionizsigma[element][electron].yw=yw;
-    vernerionizsigma[element][electron].y0=y0;
-    vernerionizsigma[element][electron].y1=y1;
-  }
-  fclose(vernerphoto);
-  free(vernerphoto_name);
-
-  /*  Reading in Partial Photoionization Cross Sections (Verner)  */
-  sprintf(vernerpartial_name,"%s/photoion_dat/verner_partial_PIsigmas.dat",DATADIR);
-  vernerpartial=fopen(vernerpartial_name,"r");
-  k=0;
-  while (fscanf(vernerpartial,"%d%d%d%d%lf%lf%lf%lf%lf%lf",&element,&electron,&principal,&angular,&Eth,&Ezero,&s0,&ya,&P,&yw)!=EOF) {
-    if (element!=element_prev) k=0;
-    partialsigma[element][k].electron=electron;
-    partialsigma[element][k].principal=principal;
-    partialsigma[element][k].angular=angular;
-    partialsigma[element][k].Eth=Eth;
-    partialsigma[element][k].Ezero=Ezero;
-    partialsigma[element][k].s0=s0;
-    partialsigma[element][k].ya=ya;
-    partialsigma[element][k].P=P;
-    partialsigma[element][k].yw=yw;
-    element_prev=element;
-    k=k+1;
-  }
-  fclose(vernerpartial);
-  free(vernerpartial_name);
 
   /* Total electron Thomson depth */
   for (k=1;k<=SPECBINS;++k) {
@@ -334,223 +237,37 @@ int neutral
 
   if (lines) {
     if (verbose) printf("Determining LOW-n Photoexcitation Cross Sections & Opacity for C to Fe...\n");
-    grounddeg[1]=2.;
-    freedeg[1]=1.;
-    for (i=1;i<=6;++i) leveldeg[1][i]=6.;
-    grounddeg[2]=1.;
-    freedeg[2]=2.;
-    for (i=3;i<=8;++i) leveldeg[2][i]=3.;
-    sprintf(linedat_name,"%s/photoion_dat/line.dat",DATADIR);
-    linedat=fopen(linedat_name,"r");
-    while(fscanf(linedat,"%s%d%d%d%s%lf%s%lf%lf",sjunk,&element,&electron,&LINE,sjunk,&WAVE,sjunk,&AMtemp,&fMtemp) != EOF) {
-      if (electron == 1) {
-	hydrogen[element].lambda[LINE]=WAVE;
-	hydrogen[element].A[LINE]=AMtemp;
-	hydrogen[element].f[LINE]=fMtemp;
-	if (Nion[element][electron] && fMtemp && LINE <= 4) {
-	  E0=1000.*HC_KEV_ANGSTROM/hydrogen[element].lambda[LINE];
-	  E0=E0*doppler_rad;
-	  OSCILLATOR=hydrogen[element].f[LINE];
-	  g_j=leveldeg[electron][LINE];
-	  g_i=grounddeg[electron];
-	  Atemp=hydrogen[element].A[LINE];
-	  ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	  ALPHA=ga/(4.*PI*DELTANUD);
-	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	}
-      } else if (electron == 2) {
-	helium[element].lambda[LINE]=WAVE;
-	helium[element].A[LINE]=AMtemp;
-	helium[element].f[LINE]=fMtemp;
-	if (Nion[element][electron] && fMtemp  && LINE <= 6) {
-	  E0=1000.*HC_KEV_ANGSTROM/helium[element].lambda[LINE];
-	  E0=E0*doppler_rad;
-	  OSCILLATOR=helium[element].f[LINE];
-	  g_j=leveldeg[electron][LINE];
-	  g_i=grounddeg[electron];
-	  Atemp=helium[element].A[LINE];
-	  ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	  DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	  ALPHA=ga/(4.*PI*DELTANUD);
-	  pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	}
-      }
-    }
-    fclose(linedat);
-    
+    line_rows=pion_ad_line_rows(&nline_rows);
+    pion_lown_line_opacity(Nion,sigmav_rad,line_rows,nline_rows,tau_exc,1.0,1.0,0);
+
     if (verbose) printf("Determining HIGH-n Photoexcitation Cross Sections & Opacity for C to Fe\n");
-    sprintf(highnfile_name,"%s/photoion_dat/highn.dat",DATADIR);
-    highnfile=fopen(highnfile_name,"r");
-    while (fscanf(highnfile,"%d%d%d%lf%lf",&element,&electron,&n,&Etemp,&ftemp)!=EOF) {
-      highn[element][electron].lambda[n]=HC_KEV_ANGSTROM/Etemp*1000.;
-      highn[element][electron].f[n]=ftemp;
-    }
-    fclose(highnfile);
-    for (i=1;i<=ELEMENTS;++i) {
-      element=list[i];
-      for (electron=1;electron<=2;++electron) {
-	if (Nion[element][electron]) {
-	  if (electron==1) oscillatornorm=1.6; /* Bethe-Salpeter p. 265 */
-	  if (electron==2) oscillatornorm=oshe[element]; /* defined above */
-	  for (n=6;n<=HIGHN;++n) {
-	    OSCILLATOR=oscillatornorm/cube((double) n);
-	    if (element!=28) {
-	      E0=HC_KEV_ANGSTROM/highn[element][electron].lambda[n]*1000.;
-	    } else if (electron==1) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.1614)*1000.;
-	    } else if (electron==2) {/* Use Fe numbers for Ni */
-	      E0=HC_KEV_ANGSTROM/(highn[26][electron].lambda[n]/1.165)*1000.;
-	    }
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    /* taking classical value for "ga=gamma" from p. 112-114 B+D */
-	    ga=DAMPING_CLASSICAL*sqr(E0*eVtoergs/hhh);
-	    ALPHA=ga/(4.*PI*DELTANUD);
-	    pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	  }
-	}
-      }
-    }
+    pion_highn_line_opacity(Nion,sigmav_rad,pion_ad_highn(),list,ELEMENTS,HIGHN,oshe,tau_exc,1.0,1.0,0);
     
     
-    /* File root for L-shell input files for Ne through Ca */
     if (verbose) printf("L-shell ions:  Ne through Ni\n");
-    for (element=10;element<=28;++element) {
-      for (electron=1;electron<=10;++electron) {
-	/* Need H- and He-like photoionization cross-sections */
-	if (Nion[element][electron] && (electron>=3 || element==28)) {
-	  if (element == 10) sprintf(element_name,"Ne");
-	  if (element == 12) sprintf(element_name,"Mg");
-	  if (element == 13) sprintf(element_name,"Al");
-	  if (element == 14) sprintf(element_name,"Si");
-	  if (element == 16) sprintf(element_name,"S");
-	  if (element == 18) sprintf(element_name,"Ar");
-	  if (element == 20) sprintf(element_name,"Ca");
-	  if (element == 26) sprintf(element_name,"Fe");
-	  if (element == 28) sprintf(element_name,"Ni");
-	  sprintf(root,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
-	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-	  if (electron>=3) {
-	    ext="tr_short"; 
-	    if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	    else sprintf(temp,"%s%da.%s",root,electron,ext);
-	    input=fopen(temp,"r");
-	    while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	      j=j+1;
-	      i=i+1;
-	      g_i=g_i+1.;
-	      g_j=g_j+1.;
-	      ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	      E0=en;
-	      E0=E0*doppler_rad;
-	      DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	      if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-		OSCILLATOR=ftemp;
-		ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-		ALPHA=ga/(4.*PI*DELTANUD);
-		pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	      }
-	    }
-	    fclose(input);
-	  }
-	}
-      }
-    }
+    pion_fac_shell_opacity(PION_FAC_L_NE_NI,Nion,sigmav_rad,0,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
     
-    /* File root for L-shell input files for Ne through Ca */
     if (verbose) printf("L-shell ions:  C through O\n");
-    for (element=6;element<=8;++element) {
-      for (electron=3;electron<=8;++electron) {
-	if (Nion[element][electron]) {
-	  if (element == 6) sprintf(element_name,"C");
-	  if (element == 7) sprintf(element_name,"N");
-	  if (element == 8) sprintf(element_name,"O");
-	  sprintf(root,"%s/photoion_dat/L_shell/%s",DATADIR,element_name);
-	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-	  ext="tr_short"; 
-	  if (electron<10) sprintf(temp,"%s0%da.%s",root,electron,ext);
-	  else sprintf(temp,"%s%da.%s",root,electron,ext);
-	  input=fopen(temp,"r");
-	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	    j=j+1;
-	    i=i+1;
-	    g_i=g_i+1.;
-	    g_j=g_j+1.;
-	    ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	    E0=en;
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-	      OSCILLATOR=ftemp;
-	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	      ALPHA=ga/(4.*PI*DELTANUD);
-	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	    }
-	  }
-	  fclose(input);
-    	}
-      }
-    }
+    pion_fac_shell_opacity(PION_FAC_L_C_O,Nion,sigmav_rad,0,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
     
     
     /* M-shell ions */
     if (verbose) printf("M-shell ions:  Mg through Ni\n");
-    for (element=12;element<=28;++element) {
-      for (electron=11;electron<=28;++electron) {
-	if (Nion[element][electron]) {
-	  if (element == 12) sprintf(element_name,"Mg");
-	  if (element == 13) sprintf(element_name,"Al");
-	  if (element == 14) sprintf(element_name,"Si");
-	  if (element == 16) sprintf(element_name,"S");
-	  if (element == 18) sprintf(element_name,"Ar");
-	  if (element == 20) sprintf(element_name,"Ca");
-	  if (element == 26) sprintf(element_name,"Fe");
-	  if (element == 28) sprintf(element_name,"Ni");
-	  sprintf(root,"%s/photoion_dat/M_shell/%s",DATADIR,element_name);
-	  if (verbose) printf("Z = %2d   z = %2d\n",element,electron);
-	  
-	  /* Transitions */
-	  ext="tr_short"; 
-	  sprintf(temp,"%s%2da.%s",root,electron,ext);
-	  input=fopen(temp,"r");
-	  while (fscanf(input,"%d%lf%d%lf%lf%lf%lf",&j,&g_j,&i,&g_i,&en,&ftemp,&Atemp) != EOF) {
-	    g_j=g_j+1.;
-	    g_i=g_i+1.;
-	    ftemp=ftemp/g_i;     /* CHECK THIS - VERY IMPORTANT!!! */
-	    E0=en;
-	    E0=E0*doppler_rad;
-	    DELTANUD=sqrt(2.)*sigmav_rad/ccc*(E0*eVtoergs/hhh);
-	    if ((E0>=EMIN && E0<=EMAX) && ftemp>tau_lim*FACTOR*DELTANUD/Nion[element][electron]) {
-	      OSCILLATOR=ftemp;
-	      ga=Atemp/*g_j*Atemp/(3.*g_i*OSCILLATOR)*/;
-	      ALPHA=ga/(4.*PI*DELTANUD);
-	      pion_line_opacity(Nion[element][electron],E0,OSCILLATOR,ALPHA,DELTANUD,tau_exc,1.0,1.0,0);
-	    }
-	  }
-	  fclose(input);
-	}      
-      }
-    }
+    pion_fac_shell_opacity(PION_FAC_M,Nion,sigmav_rad,0,lines,verbose,tau_edge,tau_exc,1.0,1.0,0);
   }
   
-  /* Read in edge opacity */
-  sprintf(temp,"%s/photoion_dat/neutral.tau",DATADIR);
-  input=fopen(temp,"r");
-  j=1;
-
-  E_bin=pion_dvector(1,SPECBINS);
-  /*  for (k=1;k<=3;++k) fgets(line,LENGTH,input);    */
-  while (fgets(line,SPECBINS,input) != NULL) {
-    sscanf(line,"%lf%lf%lf",&energy /* keV */,&bin /* keV */,&djunk /* opacity */);
-    
-    bin=2.*bin;
-    /*    E_array[j]=1000.*energy;*/
-    E_bin[j]=1000.*bin;
+  /* Read in edge opacity: neutral.tau, parsed once (photoion_atomdata), one
+   * row per bin. The file has no header: row j is bin j. (It used to begin
+   * with the 3-line header XSPEC's wdata writes, which this loop took as
+   * data, so every row landed 3 bins late; the header was removed from the
+   * file rather than skipped here.) A row with fewer than 3 numbers keeps
+   * the previous value, as the original sscanf loop did. */
+  djunk=0.;
+  ntau=pion_ad_neutral_tau(&nntau);
+  for (r=0,j=1;r<nntau && j<=SPECBINS;++r,++j) {
+    if (ntau[r].n>=3) djunk=ntau[r].v[2];
     tau_edge[j]=Nion[1][1]*djunk;
-    ++j;
   }
-  fclose(input);
 
   if (0 && sigmav_rad) {
     if (verbose) printf("Convolving spectrum with appropriate velocity distribution...");
@@ -619,26 +336,8 @@ int neutral
 
   if (verbose) printf("Freeing memory...");
   /* Free all the memory */
-  free(root);
-  free(temp);
-  free(sjunk);
-  free(sjunk1);
-  free(sjunk2);
-  free(sjunk3);
-  free(sjunk4);
-  free(line);
-  /* Both were freed inside the `if (lines)` block that used them, while the
-   * malloc at the top is unconditional, so each leaked whenever that branch was
-   * skipped -- `lines` is 0 whenever sigma_v is 0, which for this model is the
-   * default. Freed here instead. */
-  free(linedat_name);
-  free(highnfile_name);
-  free(element_name);
   pion_free_dvector(LOWE_EGRID,1,LOWE_GRIDNUM);  
   pion_free_dvector(LOWE_PIGRID,1,LOWE_GRIDNUM); 
-  pion_free_dvector(LOWE_PIGRID_2,1,LOWE_GRIDNUM);
-  pion_free_dvector(LOWE_RRGRID,1,LOWE_GRIDNUM); 
-  pion_free_dvector(LOWE_RRGRID_2,1,LOWE_GRIDNUM);
   pion_free_dvector(ABUND,1,30);
   pion_free_dvector(oshe,1,30);
   pion_free_dvector(E_array,1,SPECBINS);       
@@ -646,18 +345,20 @@ int neutral
   pion_free_dvector(tau_exc,1,SPECBINS);           
   pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(ionizsigmatemp,1,SPECBINS);
-  pion_free_dvector(E_bin,1,SPECBINS);       
   pion_free_dmatrix(Nion,1,28,1,28);
   pion_free_dmatrix(H_excite,1,28,1,6);
   pion_free_dmatrix(He_excite,1,28,1,9);
   pion_free_ivector(list,1,ELEMENTS);
   pion_free_dvector(EGRID,1,GRIDNUM);  
   pion_free_dvector(PIGRID,1,GRIDNUM); 
-  pion_free_dvector(PIGRID_2,1,GRIDNUM);
-  pion_free_dvector(RRGRID,1,GRIDNUM);  
-  pion_free_dvector(RRGRID_2,1,GRIDNUM);
   if (verbose) printf("...done!\n");
   
+  /* A data file could not be opened: everything above ran on zeros. Report it
+   * the same way as the other input errors, after the normal cleanup. */
+  if (pion_ad_failed()) {
+    for (i=0;i<ne;++i) photar[i]=0.;
+    return 1;
+  }
   return 0;
 }
 

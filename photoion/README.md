@@ -20,10 +20,37 @@ produces errors of the form "NEUTRAL: Failed to open
 .../photoion_dat/photoion_dat/abundance.dat".
 <p>
 
-Note that the internal buffer holding these constructed filenames is
-fixed at 130 characters, so a long PHOTOION_DIR path (on the order of
-100 characters or more) will overflow it and abort XSPEC. Keep the path
-short until this is fixed.
+What each data file contains, where its values come from, and the known
+errors in the data are described in photoion_dat/README.md.
+<p>
+
+PHOTOION_DIR may be any length. (Versions before 2026 kept the
+constructed filenames in a fixed 130-character buffer, and a path of
+about 100 characters or more aborted XSPEC.)
+<p>
+The abundance, He oscillator-strength, temperature, Verner
+photoionization, line (line.dat), high-n line (highn.dat), FAC
+L- and M-shell (pi_short, tr_short), and emission-model recombination
+(trates, tr_shorter, .dat, rr_short, H_ and He_recombination.dat),
+xi_ions.dat and neutral.tau tables -- every data file the models use --
+are read once per XSPEC session, as each is first needed, and kept, not
+re-read on every evaluation.
+<p>
+The photoionization cross-section table built for each absorption edge
+(a 20000-point spline, about 0.3 MB) is also kept, so later evaluations
+skip rebuilding it, which is most of an evaluation's cost in xiabs, phxi
+and miabs. The memory these tables may use is set by
+<pre>
+  xset PHOTOION_CACHE_MB 1000
+</pre>
+in megabytes: 1000 by default, 10 at least. It is read at every evaluation,
+so it can be changed at any time. When the cap is reached, the least
+recently used tables are dropped and rebuilt when next needed. The cap
+affects only speed and memory, never the results. A typical xiabs model
+uses about 180 MB. Separately, the parsed atomic data take at most about
+60 MB. If one of them cannot be opened, the model
+prints "PHOTOION: cannot open <i>path</i>" once and returns zeros. Restart
+XSPEC, or change PHOTOION_DIR, to retry.
 <p>
 
 
