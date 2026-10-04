@@ -147,6 +147,11 @@ int siabs
 
   Nion=pion_dmatrix(1,28,1,28);
   for (i=1;i<=28;++i) for (j=1;j<=28;++j) Nion[i][j]=0.;
+  /* No electron scattering is added through N_e: it was never assigned in
+   * the original code, so it held whatever the stack did (in practice
+   * about 0). It is now 0 by definition, so siabs has no scattering term,
+   * as before. */
+  N_e=0.;
 
   ion_A = (int) param[0];
   ion_z = (int) param[1];

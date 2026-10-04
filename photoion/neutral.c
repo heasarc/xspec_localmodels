@@ -129,6 +129,11 @@ int neutral
   pion_ad_oscillator_he(oshe);
 
   Nion[1][1]=param[0];
+  /* No electron scattering is added through N_e: it was never assigned in
+   * the original code, so it held whatever the stack did (in practice
+   * about 0). It is now 0 by definition. neutral's scattering, n_e sigma_T
+   * per H, is already in neutral.tau. */
+  N_e=0.;
   /*djunk=param[1]; ABUND[2]*=djunk;*/  Nion[2][2]=ABUND[2]*Nion[1][1];
   /*djunk=param[2]; ABUND[6]*=djunk;*/  Nion[6][6]=ABUND[6]*Nion[1][1];
   /*djunk=param[3]; ABUND[7]*=djunk;*/  Nion[7][7]=ABUND[7]*Nion[1][1];

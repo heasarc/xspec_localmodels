@@ -131,6 +131,11 @@ int vneutral
   pion_ad_oscillator_he(oshe);
 
   Nion[1][1]=param[0];
+  /* No electron scattering is added through N_e: it was never assigned in
+   * the original code, so it held whatever the stack did (in practice
+   * about 0). It is now 0 by definition, so vneutral has no scattering
+   * term, as before. */
+  N_e=0.;
   sigmav_rad = 1.e5*param[1];   /* gaussian (1-sigma) velocity width: convert [km/s] to [cm/s] */
   djunk=param[2];  ABUND[2]*=djunk;  Nion[2][2]=ABUND[2]*Nion[1][1];
   djunk=param[3];  ABUND[6]*=djunk;  Nion[6][6]=ABUND[6]*Nion[1][1];
