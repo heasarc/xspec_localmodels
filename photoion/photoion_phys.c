@@ -612,7 +612,7 @@ void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,dou
   *SUMlo=(int) ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN);
   if ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMlo);
   *SUMhi=(int) ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN);
-  if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMhi);
+  if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMhi >= 0.5) ++(*SUMhi);
 
   if (clamp_both) {
     if (*SUMlo > SPECBINS) *SUMlo=SPECBINS;
