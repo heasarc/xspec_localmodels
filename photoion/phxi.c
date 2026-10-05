@@ -694,22 +694,26 @@ int phxi
     }
   }
 
-  if (INPUT==0) {
-    for (i=1;i<=SPECBINS;++i) {
-      int_array[i]=E_array[i]*eVtoergs/ccc*pion_L(E_array[i])*(1.-exp(-tau[i]));
+  /* Radiation force on the absorbing gas, printed for information only; it
+   * does not enter the model output. */
+  if (verbose) {
+    if (INPUT==0) {
+      for (i=1;i<=SPECBINS;++i) {
+        int_array[i]=E_array[i]*eVtoergs/ccc*pion_L(E_array[i])*(1.-exp(-tau[i]));
+      }
+    } else {
+      for (i=1;i<=SPECBINS;++i) {
+        int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
+      }
     }
-  } else {
-    for (i=1;i<=SPECBINS;++i) {
-      int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
-    }
+    int_ans=0.;
+    for (i=1;i<=SPECBINS;++i) int_ans+=EBIN*int_array[i];
+    int_ans=f_COVERING*int_ans;
+    if (first==1) printf("******************************************************************\n");
+    printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
+    if (INPUT==0) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
+    printf("******************************************************************\n");
   }
-  int_ans=0.;
-  for (i=1;i<=SPECBINS;++i) int_ans+=EBIN*int_array[i];
-  int_ans=f_COVERING*int_ans;
-  if (first==1) printf("******************************************************************\n");
-  printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
-  if (INPUT==0 && verbose) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
-  printf("******************************************************************\n");
     
   
   /* Free all the memory */
