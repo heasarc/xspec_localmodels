@@ -569,10 +569,9 @@ double pion_voigt(double alpha,double v)
 
 /* Line integration limits, shared by all models.
  *
- * Solves for the detuning v_lim at which the line's optical depth falls below
- * tau_lim (using the Lorentz-wing limit of the Voigt function), or, if the
- * profile is still above voigt_lim there, for where it falls to voigt_lim of
- * line centre. Returns that interval both as energies [Elo,Ehi] and as the
+ * Solves for the detuning Vlim beyond which the line's optical depth is below
+ * tau_lim and its profile below voigt_lim of line centre (see the comment in
+ * the body). Returns that interval both as energies [Elo,Ehi] and as the
  * spectrum bin range [SUMlo,SUMhi] the callers loop over. tau_lim and
  * voigt_lim are per-model state; see photoion_state.h.
  *
@@ -596,11 +595,35 @@ double pion_voigt(double alpha,double v)
  */
 void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both)
 {
-  double Vlim;
+  double Vlim,Vwing,Vcore,tau0,H0,Hlim,lo,hi,mid;
+  int iter;
 
-  Vlim=sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim);
-  if (pion_voigt(ALPHA,Vlim)>voigt_lim) {
-    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*pion_voigt(ALPHA,0.)));
+  /* Vlim is where the line stops mattering: its optical depth is below
+   * tau_lim *and* its profile is below voigt_lim of line centre, i.e. where
+   * the Voigt function H(ALPHA,v) falls to Hlim. H is roughly a Gaussian core
+   * exp(-v^2) plus a Lorentz wing ALPHA/(sqrt(PI) v^2). Solving each in
+   * closed form and taking the larger puts H within about 2x of Hlim; the
+   * wing alone stops lines with little damping deep inside their core. Only
+   * where that is still more than 10% off (damping near 1e-3, the core-wing
+   * transition) is the crossing found by bisection on the true profile, so
+   * the cost stays at about one extra pion_voigt call per line. */
+  tau0=Nion_column_density*sqrt(PI)*re*ccc*OSCILLATOR/DELTANUD;   /* optical depth = tau0*H */
+  H0=pion_voigt(ALPHA,0.);
+  Hlim=voigt_lim*H0;
+  if (tau0*Hlim>tau_lim) Hlim=tau_lim/tau0;
+  Vwing=fmax(sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim),
+             sqrt(ALPHA/sqrt(PI)/(voigt_lim*H0)));
+  Vcore=sqrt(-log(Hlim));
+  Vlim=fmax(Vwing,Vcore);
+  if (pion_voigt(ALPHA,Vlim)>1.1*Hlim) {
+    lo=Vlim;
+    hi=2.*Vlim;   /* H(2v) < Hlim: the core term is negligible there, the wing a quarter */
+    for (iter=0;iter<60 && hi-lo>1.e-3*lo;++iter) {
+      mid=0.5*(lo+hi);
+      if (pion_voigt(ALPHA,mid)>Hlim) lo=mid;
+      else hi=mid;
+    }
+    Vlim=hi;
   }
   if (E0-Vlim*(hhh*DELTANUD*ergstoeV)>EMIN) {
     *Elo=E0-Vlim*(hhh*DELTANUD*ergstoeV);
