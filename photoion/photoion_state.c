@@ -52,7 +52,6 @@ double *rec_spectrum;
 double *l_array;
 double *l_spectrum;
 double *int_array;
-double *int_array_2;
 double *Tvec;
 double *Yvec;
 double *Yvec2;

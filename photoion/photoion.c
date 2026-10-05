@@ -635,7 +635,6 @@ int photoion
   for (k=1;k<=SPECBINS;++k) {tau[k]=0.; tau_edge[k]=0.; tau_exc[k]=0.;}
   Labsorb=pion_dvector(1,SPECBINS);    
   int_array=pion_dvector(1,SPECBINS);  
-  int_array_2=pion_dvector(1,SPECBINS); 
   Hionizsigmaconv=pion_dmatrix(1,28,1,SPECBINS);
   Heionizsigmaconv=pion_dmatrix(1,28,1,SPECBINS);
   ionizsigmatemp=pion_dvector(1,SPECBINS);
@@ -1004,8 +1003,9 @@ int photoion
       int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
     }
   }
-  pion_spline(E_array,int_array,SPECBINS,1.e40,1.e40,int_array_2);
-  int_ans=f_COVERING*pion_integrate(pion_integrand,1.0001*EMIN,0.9999*EMAX);
+  int_ans=0.;
+  for (i=1;i<=SPECBINS;++i) int_ans+=EBIN*int_array[i];
+  int_ans=f_COVERING*int_ans;
   if (first==1) printf("******************************************************************\n");
   printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
   if (INPUT==0 && verbose) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
@@ -1075,7 +1075,6 @@ int photoion
   pion_free_dvector(tau_edge,1,SPECBINS);           
   pion_free_dvector(Labsorb,1,SPECBINS);    
   pion_free_dvector(int_array,1,SPECBINS);  
-  pion_free_dvector(int_array_2,1,SPECBINS); 
   pion_free_dmatrix(Nion,1,28,1,28);
   pion_free_dmatrix(Tion,1,28,1,28);
   pion_free_dmatrix(EMion,1,28,1,28);

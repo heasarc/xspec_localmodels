@@ -332,14 +332,6 @@ double pion_hubble_integrate(double z /* redshift */)
   return answer;
 }
 
-double pion_integrand(double temp)
-{
-  double answer;
-
-  pion_splint(E_array,int_array,int_array_2,SPECBINS,temp,&answer);
-  return answer;
-}
-
 double pion_loglinestrength(double logkT, int ntemps)
 {
   double answer;

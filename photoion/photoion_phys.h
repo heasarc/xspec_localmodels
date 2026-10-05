@@ -124,7 +124,6 @@ double pion_gauss(double s,double x);
 int pion_cosmology(double *H0, double *Omega_m);
 double pion_hubble_integrand(double z, double H0, double Omega_m);
 double pion_hubble_integrate(double z );
-double pion_integrand(double temp);
 double pion_loglinestrength(double logkT, int ntemps);
 double pion_lowEpispline(double E);
 double pion_maxwell(double Te, double kT, double NORM);
