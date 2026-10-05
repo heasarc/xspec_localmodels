@@ -582,16 +582,11 @@ double pion_voigt(double alpha,double v)
  * the scaling is of absolute energy, not of line width -- at typical X-ray
  * line energies 0.9/1.1 is a far wider margin than the line itself.
  *
- * clamp_both selects which clamping the caller had before this was shared, and
- * the two differ only for a line lying entirely outside [EMIN,EMAX]. With
- * clamp_both false (absorption models) SUMlo may exceed SUMhi, so the caller's
- * loop runs zero times, which is correct: the line does not reach the grid.
- * With it true (emission models) both indices are pinned to the nearest edge,
- * so the caller deposits one bin of far-wing opacity at the boundary for a line
- * that is not in the band at all. Only the two clamps applied in both branches
- * are needed to keep the index in range; the extra pair is not a safety
- * measure. Preserved as-is so that sharing these routines changes no results;
- * which behavior is wanted is a separate question.
+ * The indices are clamped to [1,SPECBINS]. For a line lying entirely outside
+ * [EMIN,EMAX], SUMlo then exceeds SUMhi and the caller's loop runs zero times,
+ * which is correct: the line does not reach the grid. clamp_both is unused; it
+ * once made the emission models pin both indices to the nearest edge instead,
+ * depositing one bin of far-wing opacity there for such a line.
  */
 void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both)
 {
@@ -637,15 +632,8 @@ void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,dou
   *SUMhi=(int) ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN);
   if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMhi >= 0.5) ++(*SUMhi);
 
-  if (clamp_both) {
-    if (*SUMlo > SPECBINS) *SUMlo=SPECBINS;
-    else if (*SUMlo < 1) *SUMlo=1;
-    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
-    else if (*SUMhi < 1) *SUMhi=1;
-  } else {
-    if (*SUMlo < 1) *SUMlo=1;
-    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
-  }
+  if (*SUMlo < 1) *SUMlo=1;
+  if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
 }
 
 /* Accumulate one line's excitation opacity over the range pion_line_limits
