@@ -38,7 +38,6 @@ extern double *rec_spectrum;
 extern double *l_array;
 extern double *l_spectrum;
 extern double *int_array;
-extern double *int_array_2;
 extern double *Tvec;
 extern double *Yvec;
 extern double *Yvec2;

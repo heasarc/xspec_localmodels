@@ -1102,6 +1102,10 @@ the user to input an external spectrum located in the file
   ---------------------------------------------------------------------------
 </pre>
 1: E_or_l - =0 implies external file "addext.qdp" is in energy units [keV], =1 implies external file "addext.qdp" is in wavelength units [Angstrom].<br>
+<b>Note:</b> the rows of "addext.qdp" must be in order of increasing energy,
+which for a wavelength file (E_or_l=1) means decreasing wavelength. A file in
+increasing wavelength (or decreasing energy) currently gives a model that is zero
+everywhere, with no error message.<br>
 2: redshift - for redshifting external spectrum.<br>
 3: v - Velocity shift.<br>
 <p>
@@ -1131,6 +1135,10 @@ located in file "mulext.qdp".
 </pre>
 1: E_or_l - =0 implies external file "mulext.qdp" is in energy units
  [keV], =1 implies external file "mulext.qdp" is in wavelength units [Angstrom].<br>
+<b>Note:</b> the rows of "mulext.qdp" must be in order of increasing energy,
+which for a wavelength file (E_or_l=1) means decreasing wavelength. A file in
+increasing wavelength (or decreasing energy) currently gives a model that is zero
+everywhere, with no error message.<br>
 2: redshift - For redshifting external spectrum.<br>
 3: v - Velocity shift.<br>
 
@@ -1162,6 +1170,10 @@ spectrum located in file "tauext.qdp".
 </pre>
 1: E_or_l - =0 implies external file "tauext.qdp" is in energy units
  [keV], =1 implies external file "tauext.qdp" is in wavelength units [Angstrom].<br>
+<b>Note:</b> the rows of "tauext.qdp" must be in order of increasing energy,
+which for a wavelength file (E_or_l=1) means decreasing wavelength. A file in
+increasing wavelength (or decreasing energy) currently gives a model that is zero
+everywhere, with no error message.<br>
 2: redshift - For redshifting external spectrum.<br>
 3: v - Velocity shift.<br>
 4: tau_norm - Factor to multiply "tauext.qdp" values by.<br>

@@ -332,14 +332,6 @@ double pion_hubble_integrate(double z /* redshift */)
   return answer;
 }
 
-double pion_integrand(double temp)
-{
-  double answer;
-
-  pion_splint(E_array,int_array,int_array_2,SPECBINS,temp,&answer);
-  return answer;
-}
-
 double pion_loglinestrength(double logkT, int ntemps)
 {
   double answer;
@@ -569,10 +561,9 @@ double pion_voigt(double alpha,double v)
 
 /* Line integration limits, shared by all models.
  *
- * Solves for the detuning v_lim at which the line's optical depth falls below
- * tau_lim (using the Lorentz-wing limit of the Voigt function), or, if the
- * profile is still above voigt_lim there, for where it falls to voigt_lim of
- * line centre. Returns that interval both as energies [Elo,Ehi] and as the
+ * Solves for the detuning Vlim beyond which the line's optical depth is below
+ * tau_lim and its profile below voigt_lim of line centre (see the comment in
+ * the body). Returns that interval both as energies [Elo,Ehi] and as the
  * spectrum bin range [SUMlo,SUMhi] the callers loop over. tau_lim and
  * voigt_lim are per-model state; see photoion_state.h.
  *
@@ -583,24 +574,43 @@ double pion_voigt(double alpha,double v)
  * the scaling is of absolute energy, not of line width -- at typical X-ray
  * line energies 0.9/1.1 is a far wider margin than the line itself.
  *
- * clamp_both selects which clamping the caller had before this was shared, and
- * the two differ only for a line lying entirely outside [EMIN,EMAX]. With
- * clamp_both false (absorption models) SUMlo may exceed SUMhi, so the caller's
- * loop runs zero times, which is correct: the line does not reach the grid.
- * With it true (emission models) both indices are pinned to the nearest edge,
- * so the caller deposits one bin of far-wing opacity at the boundary for a line
- * that is not in the band at all. Only the two clamps applied in both branches
- * are needed to keep the index in range; the extra pair is not a safety
- * measure. Preserved as-is so that sharing these routines changes no results;
- * which behavior is wanted is a separate question.
+ * The indices are clamped to [1,SPECBINS]. For a line lying entirely outside
+ * [EMIN,EMAX], SUMlo then exceeds SUMhi and the caller's loop runs zero times,
+ * which is correct: the line does not reach the grid. clamp_both is unused; it
+ * once made the emission models pin both indices to the nearest edge instead,
+ * depositing one bin of far-wing opacity there for such a line.
  */
 void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,double ALPHA,double DELTANUD,double *Elo,double *Ehi,int *SUMlo,int *SUMhi,double pad_lo,double pad_hi,int clamp_both)
 {
-  double Vlim;
+  double Vlim,Vwing,Vcore,tau0,H0,Hlim,lo,hi,mid;
+  int iter;
 
-  Vlim=sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim);
-  if (pion_voigt(ALPHA,Vlim)>voigt_lim) {
-    Vlim=sqrt(ALPHA/sqrt(PI)/(voigt_lim*pion_voigt(ALPHA,0.)));
+  /* Vlim is where the line stops mattering: its optical depth is below
+   * tau_lim *and* its profile is below voigt_lim of line centre, i.e. where
+   * the Voigt function H(ALPHA,v) falls to Hlim. H is roughly a Gaussian core
+   * exp(-v^2) plus a Lorentz wing ALPHA/(sqrt(PI) v^2). Solving each in
+   * closed form and taking the larger puts H within about 2x of Hlim; the
+   * wing alone stops lines with little damping deep inside their core. Only
+   * where that is still more than 10% off (damping near 1e-3, the core-wing
+   * transition) is the crossing found by bisection on the true profile, so
+   * the cost stays at about one extra pion_voigt call per line. */
+  tau0=Nion_column_density*sqrt(PI)*re*ccc*OSCILLATOR/DELTANUD;   /* optical depth = tau0*H */
+  H0=pion_voigt(ALPHA,0.);
+  Hlim=voigt_lim*H0;
+  if (tau0*Hlim>tau_lim) Hlim=tau_lim/tau0;
+  Vwing=fmax(sqrt(ALPHA*Nion_column_density*re*ccc*OSCILLATOR/DELTANUD/tau_lim),
+             sqrt(ALPHA/sqrt(PI)/(voigt_lim*H0)));
+  Vcore=sqrt(-log(Hlim));
+  Vlim=fmax(Vwing,Vcore);
+  if (pion_voigt(ALPHA,Vlim)>1.1*Hlim) {
+    lo=Vlim;
+    hi=2.*Vlim;   /* H(2v) < Hlim: the core term is negligible there, the wing a quarter */
+    for (iter=0;iter<60 && hi-lo>1.e-3*lo;++iter) {
+      mid=0.5*(lo+hi);
+      if (pion_voigt(ALPHA,mid)>Hlim) lo=mid;
+      else hi=mid;
+    }
+    Vlim=hi;
   }
   if (E0-Vlim*(hhh*DELTANUD*ergstoeV)>EMIN) {
     *Elo=E0-Vlim*(hhh*DELTANUD*ergstoeV);
@@ -612,17 +622,10 @@ void pion_line_limits(double Nion_column_density,double E0,double OSCILLATOR,dou
   *SUMlo=(int) ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN);
   if ((pad_lo*(*Elo)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMlo);
   *SUMhi=(int) ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN);
-  if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMlo >= 0.5) ++(*SUMhi);
+  if ((pad_hi*(*Ehi)-EMIN+0.5*EBIN)/EBIN-(double) *SUMhi >= 0.5) ++(*SUMhi);
 
-  if (clamp_both) {
-    if (*SUMlo > SPECBINS) *SUMlo=SPECBINS;
-    else if (*SUMlo < 1) *SUMlo=1;
-    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
-    else if (*SUMhi < 1) *SUMhi=1;
-  } else {
-    if (*SUMlo < 1) *SUMlo=1;
-    if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
-  }
+  if (*SUMlo < 1) *SUMlo=1;
+  if (*SUMhi > SPECBINS) *SUMhi=SPECBINS;
 }
 
 /* Accumulate one line's excitation opacity over the range pion_line_limits

@@ -49,10 +49,18 @@ int mulext
   int i,j,k,LENGTH,E_or_l,SPECBINS;
   char *line;
 
+  for (i=0;i<ne;++i) photar[i]=0.;
+
+  /* mulext.qdp is read from the current directory. Open it before anything is
+   * allocated, so a missing file needs no cleanup. */
+  specfile=fopen("mulext.qdp","r");
+  if (specfile == NULL) {
+    printf("The file 'mulext.qdp' must exist in this directory.\n");
+    return 0;
+  }
+
   LENGTH=1000;
   line=malloc(LENGTH);
-
-  for (i=0;i<ne;++i) photar[i]=0.;
 
   E_or_l = param[0];
   redshift = param[1];
@@ -61,16 +69,14 @@ int mulext
   doppler_v = sqrt((1.+v/ccc)/(1.-v/ccc));
 
   SPECBINS=0;
-  specfile=fopen("mulext.qdp","r");
   for (k=1;k<=3;++k) fgets(line,LENGTH,specfile);    
   while (fgets(line,LENGTH,specfile) != NULL) ++SPECBINS;
-  fclose(specfile);
 
   E_array=pion_dvector(1,SPECBINS);
   E_bin=pion_dvector(1,SPECBINS);
   E_spectrum=pion_dvector(1,SPECBINS);
 
-  specfile=fopen("mulext.qdp","r");
+  rewind(specfile);
   j=1;
   for (k=1;k<=3;++k) fgets(line,LENGTH,specfile);    
   while (fgets(line,LENGTH,specfile) != NULL) {
@@ -100,18 +106,22 @@ int mulext
   earBIN=earhi-earlo;
   Elo=E_array[j]-E_bin[j]/2.;
   Ehi=E_array[j]+E_bin[j]/2.;
-  while (earhi<=Elo && i<ne-1) {
+  while (earhi<=Elo && i<ne) {
     ++i;
-    earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-    earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-    earBIN=earhi-earlo;
+    if (i<ne) {
+      earlo=1000.*(1.+redshift)*doppler_v*ear[i];
+      earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
+      earBIN=earhi-earlo;
+    }
   }
-  while (Ehi<earlo && j<SPECBINS) {
+  while (Ehi<earlo && j<=SPECBINS) {
     ++j;
-    Elo=E_array[j]-E_bin[j]/2.;
-    Ehi=E_array[j]+E_bin[j]/2.;
+    if (j<=SPECBINS) {
+      Elo=E_array[j]-E_bin[j]/2.;
+      Ehi=E_array[j]+E_bin[j]/2.;
+    }
   }
-  while (j<SPECBINS && i<ne-1) {
+  while (j<=SPECBINS && i<ne) {
     if (Elo<earlo) {
       if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
       else Ewidth=earBIN;
@@ -122,13 +132,17 @@ int mulext
     photar[i]+=Ewidth/earBIN*E_spectrum[j];
     if (earhi<Ehi) {
       ++i;
-      earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-      earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-      earBIN=earhi-earlo;
+      if (i<ne) {
+        earlo=1000.*(1.+redshift)*doppler_v*ear[i];
+        earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
+        earBIN=earhi-earlo;
+      }
     } else {
       ++j;
-	Elo=E_array[j]-E_bin[j]/2.;
-	Ehi=E_array[j]+E_bin[j]/2.;
+      if (j<=SPECBINS) {
+        Elo=E_array[j]-E_bin[j]/2.;
+        Ehi=E_array[j]+E_bin[j]/2.;
+      }
     }
   }
 

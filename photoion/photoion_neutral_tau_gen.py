@@ -20,9 +20,10 @@ The opacity is the sum of two parts:
   * photoabsorption: vneutral at its default parameters (all abundance
     factors 1, sigma_v = 0, so no line absorption), on the same grid
     extended by one bin at the top, both in the model and in XSPEC's
-    response, and that extra bin then dropped. The models never fill the
-    last bin of XSPEC's grid, so without the extension the table would
-    end in a zero, as the original one did;
+    response, and that extra bin then dropped. Older builds of the models
+    never filled the last bin of XSPEC's grid (the original table ends in
+    a zero for that reason), so with the extension the last row is right
+    to the table's accuracy whichever build generates it;
   * scattering by every electron, bound or free, n_e * sigma_T, where n_e
     is the number of electrons per H atom, sum of Z * abundance over the
     elements in abundance.dat, and sigma_T comes from the CODATA header
