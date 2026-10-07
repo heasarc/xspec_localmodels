@@ -2,7 +2,9 @@
  * they compute when type > 1. Line emission after photoexcitation, the
  * L-shell recombination lines and continua, and the H- and He-like
  * photoionization rates and recombination spectra. The block was identical
- * in all three models, 426 lines each; it is one function now. */
+ * in all three models, 426 lines each; it is one function now. Also the
+ * tabulated input continuum and the verbose end-of-evaluation report, which
+ * were likewise identical in the three. */
 #ifndef PHOTOION_EMISSION_H
 #define PHOTOION_EMISSION_H
 
@@ -21,5 +23,10 @@ void pion_emission_reemission(double **Nion, double N_e, double sigmav_rad,
 
 /* INPUT > 0: the tabulated continuum from input.qdp. 1 if the file is missing. */
 int pion_input_continuum(double redshift, int type, int verbose, double Labsorb[]);
+
+/* The end-of-evaluation report (ion table, radiation pressure, power-law
+ * norm). Call only when verbose is set. */
+void pion_emission_report(int type, double redshift,
+                          double **ratePI, const double ABUND[]);
 
 #endif
