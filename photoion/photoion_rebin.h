@@ -40,4 +40,12 @@ void pion_rebin_begin(struct pion_rebin *rb, const float ear[], int ne,
 int pion_rebin_next(struct pion_rebin *rb, int *i, int *j,
                     double *Ewidth, double *earBIN);
 
+/* A grid read from a file may come in decreasing energy (a wavelength file
+   in increasing wavelength). If E_array[1] > E_array[n], reverse E_array,
+   E_bin and E_spectrum ([1..n] each) in place, so that the grid increases
+   as pion_rebin_begin requires. A grid that already increases is left
+   untouched. An unsorted grid is not handled: it is not a valid input. */
+void pion_rebin_ascending(double E_array[], double E_bin[],
+                          double E_spectrum[], int n);
+
 #endif

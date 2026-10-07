@@ -100,6 +100,7 @@ int tauext
     ++j;
   }
   fclose(specfile);
+  pion_rebin_ascending(E_array,E_bin,E_spectrum,SPECBINS);
 
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
   pion_rebin_begin(&rb,ear,ne,1000.*(1.+redshift)*doppler_v,E_array,E_bin,0.,SPECBINS);

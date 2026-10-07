@@ -76,3 +76,24 @@ int pion_rebin_next(struct pion_rebin *rb, int *i, int *j,
   }
   return 1;
 }
+
+static void rebin_reverse(double a[], int n)
+{
+  int k;
+  double t;
+
+  for (k=1;k<=n/2;++k) {
+    t=a[k];
+    a[k]=a[n+1-k];
+    a[n+1-k]=t;
+  }
+}
+
+void pion_rebin_ascending(double E_array[], double E_bin[],
+                          double E_spectrum[], int n)
+{
+  if (n<2 || !(E_array[1]>E_array[n])) return;
+  rebin_reverse(E_array,n);
+  rebin_reverse(E_bin,n);
+  rebin_reverse(E_spectrum,n);
+}
