@@ -10,6 +10,7 @@
 
 
 #include "photoion_alloc.h"
+#include "photoion_rebin.h"
 
 int addext
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
@@ -45,7 +46,8 @@ int addext
 {
   FILE *specfile;
   double energy_or_lambda,energy,bin,spectrum,*E_array,*E_bin,*E_spectrum;
-  double Elo,Ehi,earlo,earhi,earBIN,Ewidth,redshift,v,doppler_v;
+  double earBIN,Ewidth,redshift,v,doppler_v;
+  struct pion_rebin rb;
   int i,j,k,LENGTH,E_or_l,SPECBINS;
   char *line;
 
@@ -101,52 +103,9 @@ int addext
   fclose(specfile);
 
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
-  j=1;
-  i=0;
-  earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-  earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-  earBIN=earhi-earlo;
-  Elo=E_array[j]-E_bin[j]/2.;
-  Ehi=E_array[j]+E_bin[j]/2.;
-  while (earhi<=Elo && i<ne) {
-    ++i;
-    if (i<ne) {
-      earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-      earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-      earBIN=earhi-earlo;
-    }
-  }
-  while (Ehi<earlo && j<=SPECBINS) {
-    ++j;
-    if (j<=SPECBINS) {
-      Elo=E_array[j]-E_bin[j]/2.;
-      Ehi=E_array[j]+E_bin[j]/2.;
-    }
-  }
-  while (j<=SPECBINS && i<ne) {
-    if (Elo<earlo) {
-      if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
-      else Ewidth=earBIN;
-    } else {
-      if (earhi-Elo<E_bin[j]) Ewidth=earhi-Elo;
-      else Ewidth=E_bin[j];
-    }
+  pion_rebin_begin(&rb,ear,ne,1000.*(1.+redshift)*doppler_v,E_array,E_bin,0.,SPECBINS);
+  while (pion_rebin_next(&rb,&i,&j,&Ewidth,&earBIN))
     photar[i]+=Ewidth*E_spectrum[j]/*(1.+redshift)*doppler_v*/;/* ph/cm^2/s in bin */
-    if (earhi<Ehi) {
-      ++i;
-      if (i<ne) {
-        earlo=1000.*(1.+redshift)*doppler_v*ear[i];
-        earhi=1000.*(1.+redshift)*doppler_v*ear[i+1];
-        earBIN=earhi-earlo;
-      }
-    } else {
-      ++j;
-      if (j<=SPECBINS) {
-        Elo=E_array[j]-E_bin[j]/2.;
-        Ehi=E_array[j]+E_bin[j]/2.;
-      }
-    }
-  }
   pion_free_dvector(E_array,1,SPECBINS);
   pion_free_dvector(E_bin,1,SPECBINS);
   pion_free_dvector(E_spectrum,1,SPECBINS);
