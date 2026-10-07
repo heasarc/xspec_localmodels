@@ -601,3 +601,54 @@ int pion_input_continuum(double redshift, int type, int verbose, double Labsorb[
     }
   return 0;
 }
+
+/* The report photoion, phsi and phxi print at the end of an evaluation when
+ * verbose is set (the caller tests it): the ion table (type > 1 only), then
+ * the radiation force on the absorbing gas and, for the power-law continuum
+ * (INPUT == 0), its normalization at 1 keV. For information only; nothing
+ * here enters the model output. The block was identical in all three models.
+ * Reads the state globals (EM, Tion, EMion, tau, ...) and overwrites the
+ * scratch array int_array. */
+void pion_emission_report(int type, double redshift,
+                          double **ratePI, const double ABUND[])
+{
+  int element,electron,i;
+  int first=1;
+  double int_ans;
+
+  if (type>1) {
+    for (element=1;element<=28;++element) {
+      for (electron=1;electron<=28;++electron) {
+	if (EM[element][electron]) {
+	  if (first) { 
+	    printf("******************************************************************\n");
+	    printf("*  Z  z  T[eV] PI=RR[1/s] EMion[cm^-3] Abundance f_ion*EM[cm^-3] *\n");
+	    first=0;
+	  }
+	  printf("* %2d %2d %6.2lf  %4.2e    %4.2e    %4.2e     %4.2e    *\n",element,electron,Tion[element][electron],ratePI[element][electron],EMion[element][electron],ABUND[element],EM[element][electron]);
+	}
+      }
+    }
+    if (first==0) {
+      printf("******************************************************************\n");
+    }
+  }
+
+  /* Radiation force on the absorbing gas */
+  if (INPUT==0) {
+    for (i=1;i<=SPECBINS;++i) {
+      int_array[i]=E_array[i]*eVtoergs/ccc*pion_L(E_array[i])*(1.-exp(-tau[i]));
+    }
+  } else {
+    for (i=1;i<=SPECBINS;++i) {
+      int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
+    }
+  }
+  int_ans=0.;
+  for (i=1;i<=SPECBINS;++i) int_ans+=EBIN*int_array[i];
+  int_ans=f_COVERING*int_ans;
+  if (first==1) printf("******************************************************************\n");
+  printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
+  if (INPUT==0) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
+  printf("******************************************************************\n");
+}

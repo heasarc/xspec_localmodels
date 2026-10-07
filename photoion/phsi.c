@@ -64,13 +64,11 @@ int phsi
 
   double *type1_spectrum,*type2_spectrum,*type3_spectrum,*type4_spectrum,*type5_spectrum,*type6_spectrum,*type7_spectrum,*type8_spectrum;
 
-  double int_ans;
 
 
   double Elo,Ehi; /* Voigt function param.'s */
   double Ewidth,earBIN;
 
-  int first=1;
   
 
   /* junk values for strings, ints, and floats */
@@ -98,7 +96,6 @@ int phsi
   int ELEMENTS=12;
 
 
-  int element,electron;
   int type;
 
 
@@ -929,46 +926,7 @@ int phsi
     }
   }
 
-  first=1;
-  if (verbose && type>1) {
-    first=1;
-    for (element=1;element<=28;++element) {
-      for (electron=1;electron<=28;++electron) {
-	if (EM[element][electron]) {
-	  if (first) { 
-	    printf("******************************************************************\n");
-	    printf("*  Z  z  T[eV] PI=RR[1/s] EMion[cm^-3] Abundance f_ion*EM[cm^-3] *\n");
-	    first=0;
-	  }
-	  printf("* %2d %2d %6.2lf  %4.2e    %4.2e    %4.2e     %4.2e    *\n",element,electron,Tion[element][electron],ratePI[element][electron],EMion[element][electron],ABUND[element],EM[element][electron]);
-	}
-      }
-    }
-    if (first==0) {
-      printf("******************************************************************\n");
-    }
-  }
-
-  /* Radiation force on the absorbing gas, printed for information only; it
-   * does not enter the model output. */
-  if (verbose) {
-    if (INPUT==0) {
-      for (i=1;i<=SPECBINS;++i) {
-        int_array[i]=E_array[i]*eVtoergs/ccc*pion_L(E_array[i])*(1.-exp(-tau[i]));
-      }
-    } else {
-      for (i=1;i<=SPECBINS;++i) {
-        int_array[i]=E_array[i]*eVtoergs/ccc*pion_Linterp(E_array[i])*(1.-exp(-tau[i]));
-      }
-    }
-    int_ans=0.;
-    for (i=1;i<=SPECBINS;++i) int_ans+=EBIN*int_array[i];
-    int_ans=f_COVERING*int_ans;
-    if (first==1) printf("******************************************************************\n");
-    printf("* Radiation Pressure = %4.2e dyne (%7.3lf - %7.3lf keV, rf) *\n",int_ans,EMIN/1000.,EMAX/1000.);
-    if (INPUT==0) printf("* Power-law Norm at 1 keV: %e [photons/cm^2/s/keV]     *\n", LNORM/(1.+redshift)/1000./(4.*PI*sqr(D))*pow(1000.,2.-GAMMA));
-    printf("******************************************************************\n");
-  }
+  if (verbose) pion_emission_report(type,redshift,ratePI,ABUND);
   
   /* Free all the memory */
   /* These were freed inside the conditional block that used them -- `if
