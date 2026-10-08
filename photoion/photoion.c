@@ -14,6 +14,7 @@
 #include "photoion_state.h"
 
 #include "photoion_alloc.h"
+#include "photoion_rebin.h"
 
 int photoion
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
@@ -68,7 +69,6 @@ int photoion
 
 
 
-  double Elo,Ehi; /* Voigt function param.'s */
   double Ewidth,earBIN;
 
 
@@ -91,7 +91,7 @@ int photoion
 
   int verbose;
 
-  double earlo,earhi;
+  struct pion_rebin rb;
   
   int HIGHN=50;
 
@@ -921,53 +921,11 @@ int photoion
 
 
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
-  j=1;
-  i=0;
-  earlo=1000.*(1.+redshift)*ear[i];
-  earhi=1000.*(1.+redshift)*ear[i+1];
-  earBIN=earhi-earlo;
-  Elo=E_array[j]-EBIN/2.;
-  Ehi=E_array[j]+EBIN/2.;
-  while (earhi<=Elo && i<ne) {
-    ++i;
-    if (i<ne) {
-      earlo=1000.*(1.+redshift)*ear[i];
-      earhi=1000.*(1.+redshift)*ear[i+1];
-      earBIN=earhi-earlo;
-    }
-  }
-  while (Ehi<earlo && j<=SPECBINS) {
-    ++j;
-    if (j<=SPECBINS) {
-      Elo=E_array[j]-EBIN/2.;
-      Ehi=E_array[j]+EBIN/2.;
-    }
-  }
-  while (j<=SPECBINS && i<ne) {
-    if (Elo<earlo) {
-      if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
-      else Ewidth=earBIN;
-    } else {
-      if (earhi-Elo<EBIN) Ewidth=earhi-Elo;
-      else Ewidth=EBIN;
-    }
+  pion_rebin_begin(&rb,ear,ne,1000.*(1.+redshift),E_array,NULL,EBIN,SPECBINS);
+  while (pion_rebin_next(&rb,&i,&j,&Ewidth,&earBIN)) {
     if (type==-1) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.*sqr(l_array[j])/HC_KEV_ANGSTROM;/* ph/cm^2/s in bin */
     else if (type==0) photar[i]+=Ewidth/earBIN*tau[j]*EBIN/1000.;/* ph/cm^2/s in bin */
     else photar[i]+=Ewidth*E_spectrum[j]*(1.+redshift);/* ph/cm^2/s in bin */
-    if (earhi<Ehi) {
-      ++i;
-      if (i<ne) {
-        earlo=1000.*(1.+redshift)*ear[i];
-        earhi=1000.*(1.+redshift)*ear[i+1];
-        earBIN=earhi-earlo;
-      }
-    } else {
-      ++j;
-      if (j<=SPECBINS) {
-        Elo=E_array[j]-EBIN/2.;
-        Ehi=E_array[j]+EBIN/2.;
-      }
-    }
   }
   
   if (verbose) pion_emission_report(type,redshift,ratePI,ABUND);

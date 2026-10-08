@@ -11,6 +11,7 @@
 #include "photoion_state.h"
 
 #include "photoion_alloc.h"
+#include "photoion_rebin.h"
 
 int neutral
 (float *ear,int ne,float *param,int ifl,float *photar,float *photer);
@@ -53,7 +54,6 @@ int neutral
   double redshift,v_rad,sigmav_rad,N_e,**Nion;
   int verbose;
 
-  double Elo,Ehi; /* Voigt function param.'s */
   double earBIN,Ewidth;
 
   const struct PION_NTAU_ROW *ntau;   /* neutral.tau, cached */
@@ -70,7 +70,7 @@ int neutral
   /* *.en file */
 
 
-  double earlo,earhi;
+  struct pion_rebin rb;
   
   int HIGHN=50;
 
@@ -293,52 +293,9 @@ int neutral
 
   if (verbose) printf("Calculating final spectrum...");
   /*    E_redshift=(1.+redshift)*1000.*(ear[i]+ear[i+1])/2.; */
-  j=1;
-  i=0;
-  earlo=1000.*(1.+redshift)*ear[i];
-  earhi=1000.*(1.+redshift)*ear[i+1];
-  earBIN=earhi-earlo;
-  Elo=E_array[j]-EBIN/2.;
-  Ehi=E_array[j]+EBIN/2.;
-  while (earhi<=Elo && i<ne) {
-    ++i;
-    if (i<ne) {
-      earlo=1000.*(1.+redshift)*ear[i];
-      earhi=1000.*(1.+redshift)*ear[i+1];
-      earBIN=earhi-earlo;
-    }
-  }
-  while (Ehi<earlo && j<=SPECBINS) {
-    ++j;
-    if (j<=SPECBINS) {
-      Elo=E_array[j]-EBIN/2.;
-      Ehi=E_array[j]+EBIN/2.;
-    }
-  }
-  while (j<=SPECBINS && i<ne) {
-    if (Elo<earlo) {
-      if (Ehi-earlo<earBIN) Ewidth=Ehi-earlo;
-      else Ewidth=earBIN;
-    } else {
-      if (earhi-Elo<EBIN) Ewidth=earhi-Elo;
-      else Ewidth=EBIN;
-    }
+  pion_rebin_begin(&rb,ear,ne,1000.*(1.+redshift),E_array,NULL,EBIN,SPECBINS);
+  while (pion_rebin_next(&rb,&i,&j,&Ewidth,&earBIN))
     photar[i]+=Ewidth/earBIN*exp(-tau[j]);
-    if (earhi<Ehi) {
-      ++i;
-      if (i<ne) {
-        earlo=1000.*(1.+redshift)*ear[i];
-        earhi=1000.*(1.+redshift)*ear[i+1];
-        earBIN=earhi-earlo;
-      }
-    } else {
-      ++j;
-      if (j<=SPECBINS) {
-        Elo=E_array[j]-EBIN/2.;
-        Ehi=E_array[j]+EBIN/2.;
-      }
-    }
-  }
   if (verbose) printf("done.\n");
 
 
